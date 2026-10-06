@@ -1,1 +1,0 @@
-# kiemtracuoiky_XD-PTPM
