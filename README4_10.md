@@ -31,3 +31,13 @@ Models (app/Models/): Xử lý logic nghiệp vụ và tương tác với cơ s�
 Views (app/Views/): Chứa giao diện người dùng hiển thị thông tin sản phẩm.
 
 2, Cá chức năng người dùng
+người dùng cơ bản có khả năng:
+
+đặt phòng trong khoảng thời gina từ ngày dd/mm/yyyy - dd/mm/yyyy trong tab đặt phòng
+
+trả phòng trước hạn nếu không còn nhưu cầu lưu trú nữa
+
+gia hạn phòng nếu có yêu cầu ở thêm
+
+3, các chức năng của admin 
+ đang cập nhật.........
