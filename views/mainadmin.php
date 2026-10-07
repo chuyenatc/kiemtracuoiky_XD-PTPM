@@ -1,4 +1,5 @@
 <?php /** @var string $action */ ?>
+<?php /** @var string $error */ ?>
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -21,24 +22,27 @@
 </head>
 <body>
     <div class="container">
-        <?php if (isset($_SESSION['user'])): ?>
-            <div class="header">
-                <h2>Quản lý Khách sạn</h2>
-                <div>
+        <div class="header">
+            <h2>Quản lý Khách sạn</h2>
+            <div>
+                <a href="index.php?action=dashboard" class="btn btn-warning">Trang chủ</a>
+                <?php if (isset($_SESSION['user'])): ?>
                     Xin chào, <strong><?= htmlspecialchars((string) $_SESSION['user'], ENT_QUOTES, 'UTF-8') ?></strong>
                     <form method="POST" action="index.php?action=logout" style="display: inline;">
                         <button type="submit" class="btn btn-danger" style="margin-left: 10px;">Đăng xuất</button>
                     </form>
-                </div>
+                <?php else: ?>
+                    <a href="index.php?action=login" class="btn">Đăng nhập</a>
+                <?php endif; ?>
             </div>
-        <?php endif; ?>
+        </div>
 
         <?php if ($error !== ''): ?>
             <p role="alert" style="color: #b00020;"><?= htmlspecialchars($error, ENT_QUOTES, 'UTF-8') ?></p>
         <?php endif; ?>
 
         <?php
-        $allowedViews = ['dangnhap.php', 'quanly.php', 'datphong.php', 'giahan.php'];
+        $allowedViews = ['dangnhap.php', 'dangky.php', 'quanly.php', 'datphong.php', 'giahan.php'];
         if (in_array($view, $allowedViews, true)) {
             require __DIR__ . '/' . $view;
         }

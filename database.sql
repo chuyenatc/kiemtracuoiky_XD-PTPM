@@ -1,13 +1,18 @@
 CREATE DATABASE IF NOT EXISTS hotel_mvc;
 USE hotel_mvc;
 
+-- CSDL da tao tu phien ban cu: them role, danh dau tai khoan admin va unique username
+-- ALTER TABLE users ADD COLUMN role ENUM('admin', 'customer') NOT NULL DEFAULT 'customer';
+-- UPDATE users SET role = 'admin' WHERE username = 'admin';
+-- ALTER TABLE users ADD UNIQUE KEY uq_users_username (username);
 CREATE TABLE users (
     id INT AUTO_INCREMENT KEY,
-    username VARCHAR(50),
-    password VARCHAR(255)
+    username VARCHAR(50) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    role ENUM('admin', 'customer') NOT NULL DEFAULT 'customer'
 );
 -- Tài khoản demo: admin / 123456
-INSERT INTO users (username, password) VALUES ('admin', '123456');
+INSERT INTO users (username, password, role) VALUES ('admin', '123456', 'admin');
 
 CREATE TABLE rooms (
     id INT AUTO_INCREMENT KEY,
