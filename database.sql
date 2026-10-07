@@ -16,7 +16,7 @@ INSERT INTO users (username, password, role) VALUES ('admin', '123456', 'admin')
 
 CREATE TABLE rooms (
     id INT AUTO_INCREMENT KEY,
-    room_name VARCHAR(20),
+    room_name VARCHAR(20) NOT NULL UNIQUE,
     status ENUM('Trống', 'Đang thuê') DEFAULT 'Trống'
 );
 INSERT INTO rooms (room_name) VALUES ('101'), ('102'), ('201'), ('202');

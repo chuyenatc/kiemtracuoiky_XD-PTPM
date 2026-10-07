@@ -6,12 +6,15 @@ $model = new Model();
 
 $requestedAction = $_GET['action'] ?? 'dashboard';
 $action = is_string($requestedAction) ? $requestedAction : 'dashboard';
-$view = 'quanly.php';
+$view = 'khachhang.php';
 $error = $_SESSION['flash_error'] ?? '';
+$success = $_SESSION['flash_success'] ?? '';
 unset($_SESSION['flash_error']);
+$roomName = '';
 $rooms = [];
 $room = null;
 $booking = null;
+$admins = [];
 
 function isValidDate(string $date): bool
 {
@@ -30,7 +33,15 @@ function bookingReturnTo($value): ?string
 
 function redirectToDashboard(): void
 {
-    header('Location: index.php?action=dashboard');
+    $dashboard = ($_SESSION['role'] ?? '') === 'admin' ? 'admin' : 'dashboard';
+    header('Location: index.php?action=' . $dashboard);
+    exit;
+}
+
+$adminActions = ['admin', 'admin_rooms', 'room_add', 'room_delete', 'admin_accounts', 'admin_add'];
+if (in_array($action, $adminActions, true) && ($_SESSION['role'] ?? '') !== 'admin') {
+    $_SESSION['flash_error'] = 'Bạn cần đăng nhập bằng tài khoản admin để sử dụng chức năng này.';
+    header('Location: index.php?action=login');
     exit;
 }
 
@@ -115,6 +126,90 @@ try {
             }
             break;
 
+        case 'admin':
+            $view = 'quanlyadmin.php';
+            $rooms = $model->quanly();
+            break;
+
+        case 'admin_rooms':
+            $view = 'adminphong.php';
+            $rooms = $model->quanly();
+            break;
+
+        case 'room_add':
+            $view = 'adminphong.php';
+            if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+                header('Location: index.php?action=admin_rooms');
+                exit;
+            }
+            $submittedRoomName = $_POST['room_name'] ?? '';
+            if (!is_string($submittedRoomName)
+                || trim($submittedRoomName) === ''
+                || strlen(trim($submittedRoomName)) > 20) {
+                $error = 'Tên phòng phải có từ 1 đến 20 ký tự.';
+                $roomName = is_string($submittedRoomName) ? trim($submittedRoomName) : '';
+            } elseif (!$model->themPhong(trim($submittedRoomName))) {
+                $error = 'Tên phòng đã tồn tại. Vui lòng chọn tên khác.';
+                $roomName = trim($submittedRoomName);
+            } else {
+                $_SESSION['flash_success'] = 'Đã thêm phòng mới.';
+                header('Location: index.php?action=admin_rooms');
+                exit;
+            }
+            $rooms = $model->quanly();
+            break;
+
+        case 'room_delete':
+            if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+                header('Location: index.php?action=admin_rooms');
+                exit;
+            }
+            $roomId = filter_input(INPUT_POST, 'room_id', FILTER_VALIDATE_INT);
+            if (!$roomId || !$model->xoaPhong($roomId)) {
+                $error = 'Không thể xóa phòng không tồn tại, đang được thuê hoặc đã có lịch sử đặt.';
+            } else {
+                $_SESSION['flash_success'] = 'Đã xóa phòng.';
+                header('Location: index.php?action=admin_rooms');
+                exit;
+            }
+            $view = 'adminphong.php';
+            $rooms = $model->quanly();
+            break;
+
+        case 'admin_accounts':
+            $view = 'admintaikhoan.php';
+            $admins = $model->danhSachAdmin();
+            break;
+
+        case 'admin_add':
+            $view = 'admintaikhoan.php';
+            if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+                header('Location: index.php?action=admin_accounts');
+                exit;
+            }
+            $username = $_POST['username'] ?? '';
+            $password = $_POST['password'] ?? '';
+            $confirmPassword = $_POST['confirm_password'] ?? '';
+            if (!is_string($username) || trim($username) === ''
+                || strlen(trim($username)) > 50
+                || !is_string($password) || strlen($password) < 6
+                || !is_string($confirmPassword) || $password !== $confirmPassword) {
+                $error = 'Nhập tên tài khoản hợp lệ, mật khẩu ít nhất 6 ký tự và xác nhận chính xác.';
+            } elseif (!$model->taoTaiKhoanAdmin(trim($username), $password)) {
+                $error = 'Tên tài khoản đã được sử dụng.';
+            } else {
+                $_SESSION['flash_success'] = 'Đã tạo tài khoản admin.';
+                header('Location: index.php?action=admin_accounts');
+                exit;
+            }
+            $admins = $model->danhSachAdmin();
+            break;
+
+        case 'customer':
+            $view = 'khachhang.php';
+            $rooms = $model->danhSachPhongKhach();
+            break;
+
         case 'logout':
             if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $_SESSION = [];
@@ -135,7 +230,7 @@ try {
                 throw new InvalidArgumentException('Phòng không tồn tại hoặc đã được thuê.');
             }
 
-            $view = 'datphong.php';
+            $view = 'datphongadmin.php';
             if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $customerName = $_POST['customer_name'] ?? '';
                 $checkIn = $_POST['check_in'] ?? '';
@@ -165,6 +260,7 @@ try {
             if (!$roomId || !$bookingId || !$model->traphong($roomId, $bookingId)) {
                 $error = 'Thông tin trả phòng không hợp lệ hoặc phòng không còn được thuê.';
             }
+            $view = 'quanlyadmin.php';
             $rooms = $model->quanly();
             break;
 
@@ -181,7 +277,7 @@ try {
                 throw new InvalidArgumentException('Không tìm thấy lượt thuê đang hoạt động.');
             }
 
-            $view = 'giahan.php';
+            $view = 'giahanadmin.php';
             if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $newCheckout = $_POST['new_checkout'] ?? '';
                 if (!is_string($newCheckout) || !isValidDate($newCheckout)
@@ -200,14 +296,24 @@ try {
 
         case 'dashboard':
         default:
-            $view = 'quanly.php';
-            $rooms = $model->quanly();
+            if (($_SESSION['role'] ?? '') === 'admin') {
+                $view = 'quanlyadmin.php';
+                $rooms = $model->quanly();
+            } else {
+                $view = 'khachhang.php';
+                $rooms = $model->danhSachPhongKhach();
+            }
             break;
     }
 } catch (InvalidArgumentException $exception) {
     $error = $exception->getMessage();
-    $rooms = $model->quanly();
-    $view = 'quanly.php';
+    if (($_SESSION['role'] ?? '') === 'admin') {
+        $rooms = $model->quanly();
+        $view = 'quanlyadmin.php';
+    } else {
+        $rooms = $model->danhSachPhongKhach();
+        $view = 'khachhang.php';
+    }
 }
 
-require __DIR__ . '/views/main.php';
+require __DIR__ . '/views/mainadmin.php';

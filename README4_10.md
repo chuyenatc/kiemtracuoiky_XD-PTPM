@@ -40,4 +40,16 @@ trả phòng trước hạn nếu không còn nhưu cầu lưu trú nữa
 gia hạn phòng nếu có yêu cầu ở thêm
 
 3, các chức năng của admin 
- đang cập nhật.........
+ - Xem tổng quan trạng thái phòng, lượt thuê, gia hạn và trả phòng.
+ - Thêm phòng và xóa phòng chưa từng có lịch sử đặt. Phòng đang thuê hoặc có lịch sử đặt được giữ lại để bảo toàn dữ liệu.
+ - Tạo tài khoản admin mới trong tab quản lý tài khoản; khách hàng không được truy cập các chức năng quản trị.
+
+4, Khu vực khách hàng
+ - Tab khách hàng hiển thị trạng thái phòng và cho phép tài khoản khách hàng đặt phòng còn trống.
+ - Khách hàng đăng ký tài khoản thường; chỉ tài khoản có vai trò admin mới được cấp quyền quản trị.
+
+5, Cập nhật cơ sở dữ liệu
+ - Cài mới: chạy `database.sql`.
+ - CSDL đã tồn tại: bảo đảm bảng `users` có cột `role` với giá trị `admin`/`customer`; đặt tài khoản quản trị hiện có thành `admin`. Để ngăn tên phòng trùng lặp, sau khi xử lý các tên phòng hiện có bị trùng, chạy:
+   `ALTER TABLE rooms MODIFY room_name VARCHAR(20) NOT NULL;`
+   `ALTER TABLE rooms ADD UNIQUE KEY uq_rooms_room_name (room_name);`

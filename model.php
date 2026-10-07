@@ -70,10 +70,101 @@ class Model
     public function quanly(): array
     {
         $stmt = $this->pdo->query(
-            "SELECT r.*, b.id AS booking_id, b.customer_name, b.check_out
+            "SELECT r.*, b.id AS booking_id, b.customer_name, b.check_out,
+                    NOT EXISTS (
+                        SELECT 1 FROM bookings history WHERE history.room_id = r.id
+                    ) AS can_delete
              FROM rooms r
              LEFT JOIN bookings b ON r.id = b.room_id AND b.status = 'Active'
              ORDER BY r.room_name"
+        );
+        return $stmt->fetchAll();
+    }
+
+    public function danhSachPhongKhach(): array
+    {
+        $stmt = $this->pdo->query(
+            'SELECT id, room_name, status FROM rooms ORDER BY room_name'
+        );
+        return $stmt->fetchAll();
+    }
+
+    public function themPhong(string $roomName): bool
+    {
+        try {
+            $stmt = $this->pdo->prepare(
+                "INSERT INTO rooms (room_name, status) VALUES (?, 'Trống')"
+            );
+            $stmt->execute([$roomName]);
+            return true;
+        } catch (PDOException $exception) {
+            if (isset($exception->errorInfo[1]) && $exception->errorInfo[1] === 1062) {
+                return false;
+            }
+            throw $exception;
+        }
+    }
+
+    public function xoaPhong(int $roomId): bool
+    {
+        $this->pdo->beginTransaction();
+        try {
+            $room = $this->pdo->prepare(
+                'SELECT status FROM rooms WHERE id = ? FOR UPDATE'
+            );
+            $room->execute([$roomId]);
+            $record = $room->fetch();
+            if (!$record || $record['status'] !== 'Trống') {
+                $this->pdo->rollBack();
+                return false;
+            }
+
+            $history = $this->pdo->prepare(
+                'SELECT id FROM bookings WHERE room_id = ? LIMIT 1'
+            );
+            $history->execute([$roomId]);
+            if ($history->fetch()) {
+                $this->pdo->rollBack();
+                return false;
+            }
+
+            $delete = $this->pdo->prepare('DELETE FROM rooms WHERE id = ?');
+            $delete->execute([$roomId]);
+            if ($delete->rowCount() !== 1) {
+                $this->pdo->rollBack();
+                return false;
+            }
+
+            $this->pdo->commit();
+            return true;
+        } catch (Throwable $exception) {
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+            throw $exception;
+        }
+    }
+
+    public function taoTaiKhoanAdmin(string $username, string $password): bool
+    {
+        try {
+            $stmt = $this->pdo->prepare(
+                "INSERT INTO users (username, password, role) VALUES (?, ?, 'admin')"
+            );
+            $stmt->execute([$username, password_hash($password, PASSWORD_DEFAULT)]);
+            return true;
+        } catch (PDOException $exception) {
+            if (isset($exception->errorInfo[1]) && $exception->errorInfo[1] === 1062) {
+                return false;
+            }
+            throw $exception;
+        }
+    }
+
+    public function danhSachAdmin(): array
+    {
+        $stmt = $this->pdo->query(
+            "SELECT username FROM users WHERE role = 'admin' ORDER BY username"
         );
         return $stmt->fetchAll();
     }
