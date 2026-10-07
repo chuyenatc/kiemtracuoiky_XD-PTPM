@@ -1,6 +1,7 @@
 <?php /** @var string $action */ ?>
 <?php /** @var string $error */ ?>
 <?php /** @var string $view */ ?>
+<?php /** @var string $success */ ?>
 <!DOCTYPE html>
 <html lang="vi">
 <head>
