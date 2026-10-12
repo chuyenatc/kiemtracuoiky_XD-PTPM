@@ -46,6 +46,54 @@ function redirectToDashboard(): void
     exit;
 }
 
+function parseVndAmount(mixed $value): ?int
+{
+    if (!is_string($value) || !ctype_digit($value)) {
+        return null;
+    }
+
+    $amount = filter_var($value, FILTER_VALIDATE_INT, [
+        'options' => ['min_range' => 1, 'max_range' => 999999999],
+    ]);
+    return $amount === false ? null : $amount;
+}
+
+function passwordResetMailConfigured(): bool
+{
+    $appUrl = rtrim((string) getenv('HOTEL_APP_URL'), '/');
+    $from = (string) getenv('HOTEL_MAIL_FROM');
+    $urlParts = parse_url($appUrl);
+
+    return $appUrl !== ''
+        && filter_var($appUrl, FILTER_VALIDATE_URL) !== false
+        && is_array($urlParts)
+        && in_array($urlParts['scheme'] ?? '', ['http', 'https'], true)
+        && isset($urlParts['host'])
+        && filter_var($from, FILTER_VALIDATE_EMAIL) !== false;
+}
+
+function sendPasswordResetEmail(string $email, string $token): void
+{
+    $appUrl = rtrim((string) getenv('HOTEL_APP_URL'), '/');
+    $from = (string) getenv('HOTEL_MAIL_FROM');
+    if (!passwordResetMailConfigured()) {
+        error_log('Password reset email is not configured; set HOTEL_APP_URL and HOTEL_MAIL_FROM.');
+        return;
+    }
+
+    $resetUrl = $appUrl . '/index.php?action=reset_password&token=' . rawurlencode($token);
+    $message = "Chúng tôi nhận được yêu cầu đặt lại mật khẩu cho tài khoản của bạn.\n\n"
+        . "Mở liên kết sau trong vòng 30 phút để đặt mật khẩu mới:\n"
+        . $resetUrl . "\n\n"
+        . "Nếu bạn không yêu cầu, hãy bỏ qua email này.";
+    $headers = "From: {$from}\r\n"
+        . "Content-Type: text/plain; charset=UTF-8\r\n";
+
+    if (!mail($email, 'Dat lai mat khau tai khoan', $message, $headers)) {
+        error_log('PHP mail() failed while sending a password reset email.');
+    }
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $submittedToken = $_POST['csrf_token'] ?? null;
     if (!is_string($submittedToken) || !hash_equals($csrfToken, $submittedToken)) {
@@ -54,7 +102,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-$adminActions = ['admin', 'admin_rooms', 'room_add', 'room_delete', 'admin_accounts', 'admin_add'];
+$adminActions = ['admin', 'admin_rooms', 'room_add', 'room_price', 'room_delete', 'admin_accounts', 'admin_add'];
 if (in_array($action, $adminActions, true) && ($_SESSION['role'] ?? '') !== 'admin') {
     $_SESSION['flash_error'] = 'Bạn cần đăng nhập bằng tài khoản admin để sử dụng chức năng này.';
     header('Location: index.php?action=login');
@@ -114,19 +162,23 @@ try {
                 : ($_GET['return_to'] ?? null));
             if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $username = $_POST['username'] ?? '';
+                $email = $_POST['email'] ?? '';
                 $password = $_POST['password'] ?? '';
                 $confirmPassword = $_POST['confirm_password'] ?? '';
                 if (!is_string($username) || trim($username) === ''
                     || strlen(trim($username)) > 50
+                    || !is_string($email) || strlen(trim($email)) > 254
+                    || filter_var(trim($email), FILTER_VALIDATE_EMAIL) === false
                     || !is_string($password) || strlen($password) < 6
                     || !is_string($confirmPassword) || $password !== $confirmPassword) {
-                    $error = 'Vui lòng nhập tài khoản hợp lệ, mật khẩu từ 6 ký tự và xác nhận mật khẩu chính xác.';
+                    $error = 'Vui lòng nhập tài khoản, email hợp lệ, mật khẩu từ 6 ký tự và xác nhận mật khẩu chính xác.';
                     break;
                 }
 
                 $username = trim($username);
-                if (!$model->dangky($username, $password)) {
-                    $error = 'Tài khoản này đã tồn tại. Vui lòng chọn tên tài khoản khác.';
+                $email = trim($email);
+                if (!$model->dangky($username, $password, $email)) {
+                    $error = 'Tài khoản hoặc email này đã được sử dụng.';
                     break;
                 }
 
@@ -138,6 +190,60 @@ try {
                 $_SESSION['user'] = $user['username'];
                 $_SESSION['role'] = $user['role'];
                 header('Location: ' . ($returnTo ?? 'index.php?action=dashboard'));
+                exit;
+            }
+            break;
+
+        case 'forgot_password':
+            $view = 'quenmatkhau.php';
+            if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+                $email = $_POST['email'] ?? '';
+                if (!is_string($email) || filter_var(trim($email), FILTER_VALIDATE_EMAIL) === false) {
+                    $error = 'Vui lòng nhập địa chỉ email hợp lệ.';
+                    break;
+                }
+
+                $email = trim($email);
+                if (!passwordResetMailConfigured()) {
+                    $error = 'Chức năng email chưa được cấu hình. Vui lòng liên hệ quản trị viên.';
+                    break;
+                }
+
+                $token = $model->taoYeuCauDatLaiMatKhau($email);
+                if ($token !== null) {
+                    sendPasswordResetEmail($email, $token);
+                }
+                $success = 'Nếu email này đã đăng ký, hệ thống sẽ gửi liên kết còn hiệu lực trong 30 phút. Nếu không nhận được email, vui lòng liên hệ quản trị viên.';
+            }
+            break;
+
+        case 'reset_password':
+            $view = 'datlaimatkhau.php';
+            $resetToken = $_SERVER['REQUEST_METHOD'] === 'POST'
+                ? ($_POST['token'] ?? '')
+                : ($_GET['token'] ?? '');
+            if (!is_string($resetToken) || !preg_match('/\A[a-f0-9]{64}\z/', $resetToken)) {
+                $error = 'Liên kết đặt lại mật khẩu không hợp lệ hoặc đã hết hạn.';
+                $view = 'dangnhap.php';
+                break;
+            }
+
+            if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+                $password = $_POST['password'] ?? '';
+                $confirmPassword = $_POST['confirm_password'] ?? '';
+                if (!is_string($password) || strlen($password) < 6
+                    || !is_string($confirmPassword) || $password !== $confirmPassword) {
+                    $error = 'Mật khẩu phải có ít nhất 6 ký tự và phần xác nhận phải khớp.';
+                    break;
+                }
+
+                if (!$model->datLaiMatKhau($resetToken, $password)) {
+                    $error = 'Liên kết đặt lại mật khẩu không hợp lệ hoặc đã hết hạn.';
+                    break;
+                }
+
+                $_SESSION['flash_success'] = 'Mật khẩu đã được cập nhật. Vui lòng đăng nhập.';
+                header('Location: index.php?action=login');
                 exit;
             }
             break;
@@ -159,12 +265,14 @@ try {
                 exit;
             }
             $submittedRoomName = $_POST['room_name'] ?? '';
+            $nightlyRate = parseVndAmount($_POST['nightly_rate'] ?? null);
             if (!is_string($submittedRoomName)
                 || trim($submittedRoomName) === ''
-                || strlen(trim($submittedRoomName)) > 20) {
-                $error = 'Tên phòng phải có từ 1 đến 20 ký tự.';
+                || strlen(trim($submittedRoomName)) > 20
+                || $nightlyRate === null) {
+                $error = 'Tên phòng phải có từ 1 đến 20 ký tự và giá thuê mỗi đêm phải lớn hơn 0.';
                 $roomName = is_string($submittedRoomName) ? trim($submittedRoomName) : '';
-            } elseif (!$model->themPhong(trim($submittedRoomName))) {
+            } elseif (!$model->themPhong(trim($submittedRoomName), $nightlyRate)) {
                 $error = 'Tên phòng đã tồn tại. Vui lòng chọn tên khác.';
                 $roomName = trim($submittedRoomName);
             } else {
@@ -172,6 +280,24 @@ try {
                 header('Location: index.php?action=admin_rooms');
                 exit;
             }
+            $rooms = $model->quanly();
+            break;
+
+        case 'room_price':
+            if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+                header('Location: index.php?action=admin_rooms');
+                exit;
+            }
+            $roomId = filter_input(INPUT_POST, 'room_id', FILTER_VALIDATE_INT);
+            $nightlyRate = parseVndAmount($_POST['nightly_rate'] ?? null);
+            if (!$roomId || $nightlyRate === null || !$model->capNhatGiaPhong($roomId, $nightlyRate)) {
+                $error = 'Không thể cập nhật giá. Hãy kiểm tra phòng và nhập giá lớn hơn 0.';
+            } else {
+                $_SESSION['flash_success'] = 'Đã cập nhật giá thuê phòng.';
+                header('Location: index.php?action=admin_rooms');
+                exit;
+            }
+            $view = 'adminphong.php';
             $rooms = $model->quanly();
             break;
 
@@ -204,15 +330,18 @@ try {
                 exit;
             }
             $username = $_POST['username'] ?? '';
+            $email = $_POST['email'] ?? '';
             $password = $_POST['password'] ?? '';
             $confirmPassword = $_POST['confirm_password'] ?? '';
             if (!is_string($username) || trim($username) === ''
                 || strlen(trim($username)) > 50
+                || !is_string($email) || strlen(trim($email)) > 254
+                || filter_var(trim($email), FILTER_VALIDATE_EMAIL) === false
                 || !is_string($password) || strlen($password) < 6
                 || !is_string($confirmPassword) || $password !== $confirmPassword) {
-                $error = 'Nhập tên tài khoản hợp lệ, mật khẩu ít nhất 6 ký tự và xác nhận chính xác.';
-            } elseif (!$model->taoTaiKhoanAdmin(trim($username), $password)) {
-                $error = 'Tên tài khoản đã được sử dụng.';
+                $error = 'Nhập tên tài khoản, email hợp lệ, mật khẩu ít nhất 6 ký tự và xác nhận chính xác.';
+            } elseif (!$model->taoTaiKhoanAdmin(trim($username), $password, trim($email))) {
+                $error = 'Tên tài khoản hoặc email đã được sử dụng.';
             } else {
                 $_SESSION['flash_success'] = 'Đã tạo tài khoản admin.';
                 header('Location: index.php?action=admin_accounts');

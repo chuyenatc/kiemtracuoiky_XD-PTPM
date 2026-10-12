@@ -8,6 +8,10 @@
         <input type="text" id="username" name="username" maxlength="50" required>
     </div>
     <div class="form-group">
+        <label for="email">Email khôi phục mật khẩu</label>
+        <input type="email" id="email" name="email" maxlength="254" required>
+    </div>
+    <div class="form-group">
         <label for="password">Mật khẩu (ít nhất 6 ký tự)</label>
         <input type="password" id="password" name="password" minlength="6" required>
     </div>
@@ -21,13 +25,14 @@
 <h4>Danh sách admin</h4>
 <table>
     <thead>
-        <tr><th>#</th><th>Tên tài khoản</th></tr>
+        <tr><th>#</th><th>Tên tài khoản</th><th>Email khôi phục</th></tr>
     </thead>
     <tbody>
         <?php foreach ($admins as $index => $admin): ?>
             <tr>
                 <td><?= $index + 1 ?></td>
                 <td><?= htmlspecialchars($admin['username'], ENT_QUOTES, 'UTF-8') ?></td>
+                <td><?= htmlspecialchars((string) ($admin['email'] ?? ''), ENT_QUOTES, 'UTF-8') ?></td>
             </tr>
         <?php endforeach; ?>
     </tbody>

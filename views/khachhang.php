@@ -6,6 +6,7 @@
         <div class="card <?= $r['status'] === 'Trống' ? 'empty' : 'rented' ?>">
             <h2>Phòng <?= htmlspecialchars($r['room_name'], ENT_QUOTES, 'UTF-8') ?></h2>
             <p>Trạng thái: <strong><?= htmlspecialchars($r['status'], ENT_QUOTES, 'UTF-8') ?></strong></p>
+            <p>Giá thuê: <strong><?= number_format((int) $r['nightly_rate'], 0, ',', '.') ?> ₫/đêm</strong></p>
             <?php if ($r['status'] === 'Trống'): ?>
                 <a href="index.php?action=book&amp;id=<?= (int) $r['id'] ?>" class="btn">Đặt phòng</a>
             <?php else: ?>

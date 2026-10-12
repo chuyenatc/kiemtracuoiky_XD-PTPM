@@ -53,3 +53,38 @@ gia hạn phòng nếu có yêu cầu ở thêm
  - CSDL đã tồn tại: bảo đảm bảng `users` có cột `role` với giá trị `admin`/`customer`; đặt tài khoản quản trị hiện có thành `admin`. Để ngăn tên phòng trùng lặp, sau khi xử lý các tên phòng hiện có bị trùng, chạy:
    `ALTER TABLE rooms MODIFY room_name VARCHAR(20) NOT NULL;`
    `ALTER TABLE rooms ADD UNIQUE KEY uq_rooms_room_name (room_name);`
+
+6, Giá thuê và khôi phục mật khẩu
+ - Giá phòng được tính theo đêm, bằng VND. Admin có thể đặt giá khi thêm phòng hoặc cập nhật giá trong tab quản lý phòng. Hệ thống lưu lại đơn giá tại thời điểm đặt phòng để các lượt thuê cũ không bị đổi giá khi admin cập nhật bảng giá; tổng tiền dự kiến được tính theo số đêm.
+ - Để cập nhật CSDL cũ, chạy một lần các lệnh sau. Trước khi chạy, sao lưu CSDL:
+
+   ```sql
+   ALTER TABLE users
+       ADD COLUMN email VARCHAR(254) NULL,
+       ADD UNIQUE KEY uq_users_email (email),
+       ADD COLUMN reset_token_hash CHAR(64) NULL,
+       ADD COLUMN reset_expires_at DATETIME NULL;
+
+   ALTER TABLE rooms
+       ADD COLUMN nightly_rate BIGINT UNSIGNED NOT NULL DEFAULT 0;
+
+   UPDATE rooms SET nightly_rate = 500000 WHERE room_name IN ('101', '102');
+   UPDATE rooms SET nightly_rate = 650000 WHERE room_name IN ('201', '202');
+
+   ALTER TABLE bookings
+       ADD COLUMN nightly_rate BIGINT UNSIGNED NOT NULL DEFAULT 0;
+
+   UPDATE bookings b
+   INNER JOIN rooms r ON r.id = b.room_id
+   SET b.nightly_rate = r.nightly_rate;
+   ```
+
+   Các lượt đặt cũ không có lịch sử giá chính xác; câu `UPDATE bookings` gán giá hiện tại của phòng làm giá ước tính. Đặt email cho tài khoản cũ để họ có thể tự khôi phục mật khẩu, ví dụ:
+
+   ```sql
+   UPDATE users SET email = 'admin@example.com' WHERE username = 'admin';
+   ```
+
+ - Đăng ký tài khoản mới yêu cầu email duy nhất. Khi tạo tài khoản admin, nhập email khôi phục; tài khoản đã tồn tại cần được cập nhật email bằng SQL hoặc cách quản trị CSDL hiện có.
+ - Để gửi liên kết đặt lại mật khẩu, cấu hình hai biến môi trường cho tiến trình PHP/Apache: `HOTEL_APP_URL` (URL gốc của ứng dụng, ví dụ `http://localhost/kiemtracuoiky_XD-PTPM`) và `HOTEL_MAIL_FROM` (địa chỉ email gửi). PHP `mail()` cũng phải được cấu hình để gửi thư qua SMTP/sendmail trong `php.ini`/XAMPP. Trên website thật, dùng URL HTTPS và SMTP của nhà cung cấp email; không lưu mật khẩu SMTP trong mã nguồn.
+ - Liên kết đặt lại chỉ dùng một lần và hết hạn sau 30 phút. Nếu PHP không gửi được email, chi tiết lỗi được ghi vào PHP error log; người dùng cần liên hệ quản trị viên hoặc thử lại sau.

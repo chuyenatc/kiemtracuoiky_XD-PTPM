@@ -68,6 +68,7 @@
         $allowedViews = [
             'dangnhap.php', 'dangky.php', 'quanlyadmin.php', 'datphongadmin.php',
             'giahanadmin.php', 'khachhang.php', 'adminphong.php', 'admintaikhoan.php',
+            'quenmatkhau.php', 'datlaimatkhau.php',
         ];
         if (in_array($view, $allowedViews, true)) {
             require __DIR__ . '/' . $view;

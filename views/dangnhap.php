@@ -12,6 +12,9 @@
         <input type="password" name="password" required>
     </div>
     <button type="submit" class="btn" style="width: 100%;">Đăng nhập</button>
+    <a href="index.php?action=forgot_password" class="btn btn-warning" style="display: block; text-align: center;">
+        Quên mật khẩu?
+    </a>
     <a href="index.php?action=register" class="btn btn-warning" style="display: block; text-align: center;">
         Chưa có tài khoản? Đăng ký
     </a>

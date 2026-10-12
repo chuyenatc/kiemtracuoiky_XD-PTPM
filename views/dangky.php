@@ -8,6 +8,10 @@
         <input type="text" name="username" maxlength="50" required>
     </div>
     <div class="form-group">
+        <label>Email (dùng để khôi phục mật khẩu)</label>
+        <input type="email" name="email" maxlength="254" required>
+    </div>
+    <div class="form-group">
         <label>Mật khẩu (ít nhất 6 ký tự)</label>
         <input type="password" name="password" minlength="6" required>
     </div>

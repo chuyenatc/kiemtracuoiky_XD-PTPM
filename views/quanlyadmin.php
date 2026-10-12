@@ -12,6 +12,8 @@
             <?php else: ?>
                 <p><small>Khách: <?= htmlspecialchars((string) $r['customer_name'], ENT_QUOTES, 'UTF-8') ?></small></p>
                 <p><small>Trả phòng: <?= htmlspecialchars((string) $r['check_out'], ENT_QUOTES, 'UTF-8') ?></small></p>
+                <p><small>Giá: <?= number_format((int) $r['booking_nightly_rate'], 0, ',', '.') ?> ₫/đêm</small></p>
+                <p><strong>Tổng tiền dự kiến: <?= number_format((int) $r['booking_total'], 0, ',', '.') ?> ₫</strong></p>
                 <a href="index.php?action=extend&amp;booking_id=<?= (int) $r['booking_id'] ?>" class="btn btn-warning">Gia hạn</a>
                 <form method="POST" action="index.php?action=checkout" style="display: inline;">
                     <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
