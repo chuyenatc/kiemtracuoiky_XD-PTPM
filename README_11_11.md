@@ -1,4 +1,4 @@
-BÁO CÁO 4/10
+BÁO CÁO 12/10
 
 1, Làm sao để xây dựng 1 hệ thống với sự trợ giúp của Agent
 +Để bắt đầu xây rựng 1 hệ thông với sự trợ giúp của Agent đầu tiên chúng ta cần sác định được rõ mục tiêu của hệ thống như:
