@@ -1,8 +1,16 @@
 <?php
+declare(strict_types=1);
+
 session_start();
 
 require_once __DIR__ . '/model.php';
 $model = new Model();
+
+$csrfToken = $_SESSION['csrf_token'] ?? null;
+if (!is_string($csrfToken) || $csrfToken === '') {
+    $csrfToken = bin2hex(random_bytes(32));
+    $_SESSION['csrf_token'] = $csrfToken;
+}
 
 $requestedAction = $_GET['action'] ?? 'dashboard';
 $action = is_string($requestedAction) ? $requestedAction : 'dashboard';
@@ -22,7 +30,7 @@ function isValidDate(string $date): bool
     return $parsed !== false && $parsed->format('Y-m-d') === $date;
 }
 
-function bookingReturnTo($value): ?string
+function bookingReturnTo(mixed $value): ?string
 {
     if (!is_string($value)
         || !preg_match('/\Aindex\.php\?action=book&id=([1-9][0-9]*)\z/', $value, $matches)) {
@@ -36,6 +44,14 @@ function redirectToDashboard(): void
     $dashboard = ($_SESSION['role'] ?? '') === 'admin' ? 'admin' : 'dashboard';
     header('Location: index.php?action=' . $dashboard);
     exit;
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $submittedToken = $_POST['csrf_token'] ?? null;
+    if (!is_string($submittedToken) || !hash_equals($csrfToken, $submittedToken)) {
+        $_SESSION['flash_error'] = 'Phiên làm việc không hợp lệ. Vui lòng thử lại.';
+        redirectToDashboard();
+    }
 }
 
 $adminActions = ['admin', 'admin_rooms', 'room_add', 'room_delete', 'admin_accounts', 'admin_add'];

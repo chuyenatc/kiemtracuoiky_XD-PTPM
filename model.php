@@ -1,4 +1,6 @@
 <?php
+declare(strict_types=1);
+
 class Model
 {
     private PDO $pdo;
@@ -169,14 +171,15 @@ class Model
         return $stmt->fetchAll();
     }
 
-    public function layPhong(int $id)
+    public function layPhong(int $id): ?array
     {
         $stmt = $this->pdo->prepare('SELECT * FROM rooms WHERE id = ?');
         $stmt->execute([$id]);
-        return $stmt->fetch();
+        $room = $stmt->fetch();
+        return $room === false ? null : $room;
     }
 
-    public function layLuotThue(int $id)
+    public function layLuotThue(int $id): ?array
     {
         $stmt = $this->pdo->prepare(
             "SELECT b.*, r.room_name
@@ -185,7 +188,8 @@ class Model
              WHERE b.id = ? AND b.status = 'Active'"
         );
         $stmt->execute([$id]);
-        return $stmt->fetch();
+        $booking = $stmt->fetch();
+        return $booking === false ? null : $booking;
     }
 
     public function datphong(

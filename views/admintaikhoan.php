@@ -1,6 +1,8 @@
 <?php /** @var array $admins */ ?>
+<?php /** @var string $csrfToken */ ?>
 <h3>Quản lý tài khoản admin</h3>
 <form method="POST" action="index.php?action=admin_add" style="max-width: 420px;">
+    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
     <div class="form-group">
         <label for="username">Tên tài khoản</label>
         <input type="text" id="username" name="username" maxlength="50" required>

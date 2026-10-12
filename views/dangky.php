@@ -1,5 +1,7 @@
+<?php /** @var string $csrfToken */ ?>
 <h2 style="text-align: center;">Đăng ký tài khoản</h2>
 <form method="POST" action="index.php?action=register" style="max-width: 400px; margin: 0 auto;">
+    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
     <input type="hidden" name="return_to" value="<?= htmlspecialchars($returnTo ?? '', ENT_QUOTES, 'UTF-8') ?>">
     <div class="form-group">
         <label>Tài khoản</label>

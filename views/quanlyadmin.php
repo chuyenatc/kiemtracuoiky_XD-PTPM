@@ -1,4 +1,5 @@
 <?php /** @var array $rooms */ ?>
+<?php /** @var string $csrfToken */ ?>
 <h3>Danh sách phòng</h3>
 <div class="grid">
     <?php foreach ($rooms as $r): ?>
@@ -13,6 +14,7 @@
                 <p><small>Trả phòng: <?= htmlspecialchars((string) $r['check_out'], ENT_QUOTES, 'UTF-8') ?></small></p>
                 <a href="index.php?action=extend&amp;booking_id=<?= (int) $r['booking_id'] ?>" class="btn btn-warning">Gia hạn</a>
                 <form method="POST" action="index.php?action=checkout" style="display: inline;">
+                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
                     <input type="hidden" name="room_id" value="<?= (int) $r['id'] ?>">
                     <input type="hidden" name="booking_id" value="<?= (int) $r['booking_id'] ?>">
                     <button type="submit" class="btn btn-danger">Trả phòng</button>

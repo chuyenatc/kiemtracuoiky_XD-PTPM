@@ -1,7 +1,9 @@
 <?php /** @var array $rooms */ ?>
 <?php /** @var string $roomName */ ?>
+<?php /** @var string $csrfToken */ ?>
 <h3>Quản lý phòng</h3>
 <form method="POST" action="index.php?action=room_add" style="max-width: 420px;">
+    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
     <div class="form-group">
         <label for="room_name">Tên phòng</label>
         <input type="text" id="room_name" name="room_name" maxlength="20"
@@ -19,6 +21,7 @@
             <?php if ($r['can_delete'] && $r['status'] === 'Trống'): ?>
                 <form method="POST" action="index.php?action=room_delete"
                       onsubmit="return confirm('Bạn có chắc muốn xóa phòng này?');">
+                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
                     <input type="hidden" name="room_id" value="<?= (int) $r['id'] ?>">
                     <button type="submit" class="btn btn-danger">Xóa phòng</button>
                 </form>

@@ -1,6 +1,8 @@
+<?php /** @var string $csrfToken */ ?>
 <?php /** @var array $booking */ ?>
 <h3>Gia hạn Phòng <?= htmlspecialchars($booking['room_name'], ENT_QUOTES, 'UTF-8') ?></h3>
 <form method="POST" style="max-width: 400px;">
+    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
     <input type="hidden" name="booking_id" value="<?= (int) $booking['id'] ?>">
     <div class="form-group">
         <label>Chọn ngày trả phòng mới</label>

@@ -2,6 +2,7 @@
 <?php /** @var string $error */ ?>
 <?php /** @var string $view */ ?>
 <?php /** @var string $success */ ?>
+<?php /** @var string $csrfToken */ ?>
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -33,6 +34,7 @@
                 <?php if (isset($_SESSION['user'])): ?>
                     Xin chào, <strong><?= htmlspecialchars((string) $_SESSION['user'], ENT_QUOTES, 'UTF-8') ?></strong>
                     <form method="POST" action="index.php?action=logout" style="display: inline;">
+                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
                         <button type="submit" class="btn btn-danger" style="margin-left: 10px;">Đăng xuất</button>
                     </form>
                 <?php else: ?>
