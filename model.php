@@ -7,10 +7,18 @@ class Model
 
     public function __construct()
     {
+        $dbHost = getenv('DB_HOST') ?: 'localhost';
+        $dbName = getenv('DB_NAME') ?: 'hotel_mvc';
+        $dbUser = getenv('DB_USER') ?: 'root';
+        $dbPassword = getenv('DB_PASSWORD');
+        if ($dbPassword === false) {
+            $dbPassword = '';
+        }
+
         $this->pdo = new PDO(
-            'mysql:host=localhost;dbname=hotel_mvc;charset=utf8mb4',
-            'root',
-            '',
+            "mysql:host={$dbHost};dbname={$dbName};charset=utf8mb4",
+            $dbUser,
+            $dbPassword,
             [
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,

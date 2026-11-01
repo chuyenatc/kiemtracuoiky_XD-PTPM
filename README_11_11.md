@@ -24,20 +24,18 @@ DỰ ÁN WEBSITE QUẢN LÝ KHÁC SẠN
 Dự án Website quản lý khách sạn được xây dựng theo mô hình MVC (Model - View - Controller) bằng ngôn ngữ PHP thuần (Vanilla PHP).
 
 1, Kiến trúc hệ thống (MVC)
-Controllers (app/Controllers/): Điều hướng và xử lý logic các luồng người dùng (HomeController, ProductController, AdminProductController).
+Controllers (`controllers/`): Mỗi màn hình có controller riêng với tên tiếng Việt tương ứng (như `DangNhapController.php`, `AdminPhongController.php`, `DatPhongController.php`). `index.php` định tuyến request; `ControllerChung.php` chứa các hàm dùng chung. `views/mainadmin.php` là layout bao các view nội dung.
 
-Models (app/Models/): Xử lý logic nghiệp vụ và tương tác với cơ sở dữ liệu MySQL thông qua PDO (ProductModel, BaseModel).
+Models (`model.php`): Xử lý truy vấn và thao tác dữ liệu MySQL thông qua PDO.
 
-Views (app/Views/): Chứa giao diện người dùng hiển thị thông tin sản phẩm.
+Views (`views/`): Chứa layout và các mẫu giao diện; không xử lý request hoặc truy vấn cơ sở dữ liệu.
+
+`index.php` là điểm vào ứng dụng, khởi tạo Model và Controller.
 
 2, Cá chức năng người dùng
-người dùng cơ bản có khả năng:
-
-đặt phòng trong khoảng thời gina từ ngày dd/mm/yyyy - dd/mm/yyyy trong tab đặt phòng
-
-trả phòng trước hạn nếu không còn nhưu cầu lưu trú nữa
-
-gia hạn phòng nếu có yêu cầu ở thêm
+    -đặt phòng trong khoảng thời gina từ ngày dd/mm/yyyy - dd/mm/yyyy trong tab đặt phòng
+    -trả phòng trước hạn nếu không còn nhưu cầu lưu trú nữa
+    -gia hạn phòng nếu có yêu cầu ở thêm
 
 3, các chức năng của admin 
  - Xem tổng quan trạng thái phòng, lượt thuê, gia hạn và trả phòng.
@@ -48,43 +46,26 @@ gia hạn phòng nếu có yêu cầu ở thêm
  - Tab khách hàng hiển thị trạng thái phòng và cho phép tài khoản khách hàng đặt phòng còn trống.
  - Khách hàng đăng ký tài khoản thường; chỉ tài khoản có vai trò admin mới được cấp quyền quản trị.
 
-5, Cập nhật cơ sở dữ liệu
- - Cài mới: chạy `database.sql`.
- - CSDL đã tồn tại: bảo đảm bảng `users` có cột `role` với giá trị `admin`/`customer`; đặt tài khoản quản trị hiện có thành `admin`. Để ngăn tên phòng trùng lặp, sau khi xử lý các tên phòng hiện có bị trùng, chạy:
-   `ALTER TABLE rooms MODIFY room_name VARCHAR(20) NOT NULL;`
-   `ALTER TABLE rooms ADD UNIQUE KEY uq_rooms_room_name (room_name);`
-
 6, Giá thuê và khôi phục mật khẩu
  - Giá phòng được tính theo đêm, bằng VND. Admin có thể đặt giá khi thêm phòng hoặc cập nhật giá trong tab quản lý phòng. Hệ thống lưu lại đơn giá tại thời điểm đặt phòng để các lượt thuê cũ không bị đổi giá khi admin cập nhật bảng giá; tổng tiền dự kiến được tính theo số đêm.
  - Để cập nhật CSDL cũ, chạy một lần các lệnh sau. Trước khi chạy, sao lưu CSDL:
 
-   ```sql
-   ALTER TABLE users
-       ADD COLUMN email VARCHAR(254) NULL,
-       ADD UNIQUE KEY uq_users_email (email),
-       ADD COLUMN reset_token_hash CHAR(64) NULL,
-       ADD COLUMN reset_expires_at DATETIME NULL;
+   
+dùng plane sinh ra hệ thống
 
-   ALTER TABLE rooms
-       ADD COLUMN nightly_rate BIGINT UNSIGNED NOT NULL DEFAULT 0;
+## Chạy dự án bằng Docker
 
-   UPDATE rooms SET nightly_rate = 500000 WHERE room_name IN ('101', '102');
-   UPDATE rooms SET nightly_rate = 650000 WHERE room_name IN ('201', '202');
+1. Cài Docker Desktop và mở Docker Engine.
+2. Tại thư mục dự án, sao chép `docker/.env.example` thành `docker/.env` và đặt các mật khẩu riêng cho `MYSQL_PASSWORD` và `MYSQL_ROOT_PASSWORD`. Không chia sẻ hoặc commit `docker/.env`.
+3. Khởi động ứng dụng và MySQL:
 
-   ALTER TABLE bookings
-       ADD COLUMN nightly_rate BIGINT UNSIGNED NOT NULL DEFAULT 0;
-
-   UPDATE bookings b
-   INNER JOIN rooms r ON r.id = b.room_id
-   SET b.nightly_rate = r.nightly_rate;
+   ```powershell
+   docker compose --env-file docker/.env -f docker/docker-compose.yml up --build -d
    ```
 
-   Các lượt đặt cũ không có lịch sử giá chính xác; câu `UPDATE bookings` gán giá hiện tại của phòng làm giá ước tính. Đặt email cho tài khoản cũ để họ có thể tự khôi phục mật khẩu, ví dụ:
+4. Mở `http://localhost:8080` (hoặc cổng đã đặt trong `APP_PORT`).
+5. Dừng các container bằng `docker compose --env-file docker/.env -f docker/docker-compose.yml down`. Dữ liệu MySQL được lưu trong volume `hotel_mysql_data`; không dùng `docker compose down -v` nếu muốn giữ dữ liệu.
 
-   ```sql
-   UPDATE users SET email = 'admin@example.com' WHERE username = 'admin';
-   ```
+`database.sql` chỉ được MySQL nạp tự động khi volume dữ liệu được tạo lần đầu. Tài khoản ứng dụng kết nối MySQL bằng `MYSQL_USER`; `MYSQL_ROOT_PASSWORD` chỉ dành cho quản trị database. MySQL không được publish cổng ra máy host. Tài khoản demo của website là `admin` / `123456`; hãy đổi mật khẩu này trước khi đưa ứng dụng lên môi trường thật. Các biến `HOTEL_APP_URL` và `HOTEL_MAIL_FROM` dùng cho chức năng gửi email đặt lại mật khẩu.
 
- - Đăng ký tài khoản mới yêu cầu email duy nhất. Khi tạo tài khoản admin, nhập email khôi phục; tài khoản đã tồn tại cần được cập nhật email bằng SQL hoặc cách quản trị CSDL hiện có.
- - Để gửi liên kết đặt lại mật khẩu, cấu hình hai biến môi trường cho tiến trình PHP/Apache: `HOTEL_APP_URL` (URL gốc của ứng dụng, ví dụ `http://localhost/kiemtracuoiky_XD-PTPM`) và `HOTEL_MAIL_FROM` (địa chỉ email gửi). PHP `mail()` cũng phải được cấu hình để gửi thư qua SMTP/sendmail trong `php.ini`/XAMPP. Trên website thật, dùng URL HTTPS và SMTP của nhà cung cấp email; không lưu mật khẩu SMTP trong mã nguồn.
- - Liên kết đặt lại chỉ dùng một lần và hết hạn sau 30 phút. Nếu PHP không gửi được email, chi tiết lỗi được ghi vào PHP error log; người dùng cần liên hệ quản trị viên hoặc thử lại sau.
+Nếu volume MySQL đã được khởi tạo bằng cấu hình cũ, các biến mật khẩu mới không tự đổi thông tin đăng nhập trong database đang tồn tại. Không xóa volume nếu cần giữ dữ liệu; cần cập nhật user MySQL hiện có trước khi khởi động lại ứng dụng.
