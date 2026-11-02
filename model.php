@@ -83,6 +83,22 @@ class Model
             "SELECT r.*, b.id AS booking_id, b.customer_name, b.check_out,
                     b.nightly_rate AS booking_nightly_rate,
                     DATEDIFF(b.check_out, b.check_in) * b.nightly_rate AS booking_total,
+                    b.payment_method, b.deposit_required, b.paid_amount,
+                    CASE WHEN b.payment_method = 'unknown' THEN NULL ELSE GREATEST(
+                        CAST(DATEDIFF(b.check_out, b.check_in) * b.nightly_rate AS DECIMAL(30, 0))
+                            - CAST(b.paid_amount AS DECIMAL(30, 0)),
+                        0
+                    ) END AS balance_due,
+                    CASE
+                        WHEN b.id IS NULL THEN NULL
+                        WHEN b.payment_method = 'unknown' THEN 'Chưa đối soát'
+                        WHEN b.paid_amount >= DATEDIFF(b.check_out, b.check_in) * b.nightly_rate
+                            THEN 'Đã thanh toán'
+                        WHEN b.deposit_required > 0 AND b.paid_amount >= b.deposit_required
+                            THEN 'Đã đặt cọc'
+                        WHEN b.paid_amount > 0 THEN 'Đã thu một phần'
+                        ELSE 'Chưa thanh toán'
+                    END AS payment_status,
                     NOT EXISTS (
                         SELECT 1 FROM bookings history WHERE history.room_id = r.id
                     ) AS can_delete
@@ -198,8 +214,24 @@ class Model
     public function baoCaoLuotThueTheoThang(string $monthStart, string $nextMonthStart): array
     {
         $stmt = $this->pdo->prepare(
-            'SELECT b.id, b.customer_name, b.check_in, b.check_out, b.nightly_rate, b.status,
+            "SELECT b.id, b.customer_name, b.check_in, b.check_out, b.nightly_rate, b.status,
+                    b.payment_method, b.deposit_required, b.paid_amount,
                     r.room_name,
+                    DATEDIFF(b.check_out, b.check_in) * b.nightly_rate AS booking_total,
+                    CASE WHEN b.payment_method = 'unknown' THEN NULL ELSE GREATEST(
+                        CAST(DATEDIFF(b.check_out, b.check_in) * b.nightly_rate AS DECIMAL(30, 0))
+                            - CAST(b.paid_amount AS DECIMAL(30, 0)),
+                        0
+                    ) END AS balance_due,
+                    CASE
+                        WHEN b.payment_method = 'unknown' THEN 'Chưa đối soát'
+                        WHEN b.paid_amount >= DATEDIFF(b.check_out, b.check_in) * b.nightly_rate
+                            THEN 'Đã thanh toán'
+                        WHEN b.deposit_required > 0 AND b.paid_amount >= b.deposit_required
+                            THEN 'Đã đặt cọc'
+                        WHEN b.paid_amount > 0 THEN 'Đã thu một phần'
+                        ELSE 'Chưa thanh toán'
+                    END AS payment_status,
                     GREATEST(
                         DATEDIFF(LEAST(b.check_out, ?), GREATEST(b.check_in, ?)),
                         0
@@ -207,7 +239,7 @@ class Model
              FROM bookings b
              INNER JOIN rooms r ON r.id = b.room_id
              WHERE b.check_in < ? AND b.check_out > ?
-             ORDER BY b.check_in DESC, b.id DESC'
+             ORDER BY b.check_in DESC, b.id DESC"
         );
         $stmt->execute([$nextMonthStart, $monthStart, $nextMonthStart, $monthStart]);
         return $stmt->fetchAll();
@@ -374,12 +406,14 @@ class Model
         int $roomId,
         string $customerName,
         string $checkIn,
-        string $checkOut
+        string $checkOut,
+        string $paymentMethod
     ): bool {
         if (trim($customerName) === ''
             || !$this->isValidDate($checkIn)
             || !$this->isValidDate($checkOut)
-            || $checkOut <= $checkIn) {
+            || $checkOut <= $checkIn
+            || !in_array($paymentMethod, ['direct', 'online'], true)) {
             return false;
         }
 
@@ -394,19 +428,126 @@ class Model
                 return false;
             }
 
-            $room = $this->pdo->prepare('SELECT nightly_rate FROM rooms WHERE id = ?');
+            $room = $this->pdo->prepare('SELECT nightly_rate, CURDATE() AS today FROM rooms WHERE id = ?');
             $room->execute([$roomId]);
-            $nightlyRate = $room->fetchColumn();
-            if ($nightlyRate === false) {
+            $roomData = $room->fetch();
+            if (!$roomData) {
                 $this->pdo->rollBack();
                 return false;
             }
 
+            $nights = (int) (new DateTimeImmutable($checkIn))->diff(new DateTimeImmutable($checkOut))->days;
+            $nightlyRate = (int) $roomData['nightly_rate'];
+            $totalAmount = $nights * $nightlyRate;
+            $depositRequired = $checkIn > $roomData['today']
+                ? intdiv($totalAmount, 5) + ($totalAmount % 5 > 0 ? 1 : 0)
+                : 0;
             $insert = $this->pdo->prepare(
-                'INSERT INTO bookings (room_id, customer_name, check_in, check_out, nightly_rate)
-                 VALUES (?, ?, ?, ?, ?)'
+                'INSERT INTO bookings (
+                    room_id, customer_name, check_in, check_out, nightly_rate,
+                    payment_method, deposit_required, paid_amount
+                 ) VALUES (?, ?, ?, ?, ?, ?, ?, 0)'
             );
-            $insert->execute([$roomId, $customerName, $checkIn, $checkOut, $nightlyRate]);
+            $insert->execute([
+                $roomId,
+                $customerName,
+                $checkIn,
+                $checkOut,
+                $nightlyRate,
+                $paymentMethod,
+                $depositRequired,
+            ]);
+            $this->pdo->commit();
+            return true;
+        } catch (Throwable $exception) {
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+            throw $exception;
+        }
+    }
+
+    public function danhSachThanhToan(): array
+    {
+        $stmt = $this->pdo->query(
+            "SELECT b.id, b.customer_name, b.check_in, b.check_out, b.nightly_rate,
+                    b.payment_method, b.deposit_required, b.paid_amount, b.status,
+                    r.room_name,
+                    DATEDIFF(b.check_out, b.check_in) * b.nightly_rate AS total_amount,
+                    CASE WHEN b.payment_method = 'unknown' THEN NULL ELSE GREATEST(
+                        CAST(DATEDIFF(b.check_out, b.check_in) * b.nightly_rate AS DECIMAL(30, 0))
+                            - CAST(b.paid_amount AS DECIMAL(30, 0)),
+                        0
+                    ) END AS balance_due,
+                    CASE
+                        WHEN b.payment_method = 'unknown' THEN 'Chưa đối soát'
+                        WHEN b.paid_amount >= DATEDIFF(b.check_out, b.check_in) * b.nightly_rate
+                            THEN 'Đã thanh toán'
+                        WHEN b.deposit_required > 0 AND b.paid_amount >= b.deposit_required
+                            THEN 'Đã đặt cọc'
+                        WHEN b.paid_amount > 0 THEN 'Đã thu một phần'
+                        ELSE 'Chưa thanh toán'
+                    END AS payment_status
+             FROM bookings b
+             INNER JOIN rooms r ON r.id = b.room_id
+             ORDER BY b.check_in DESC, b.id DESC"
+        );
+        return $stmt->fetchAll();
+    }
+
+    public function ghiNhanThanhToan(
+        int $bookingId,
+        int $amount,
+        ?string $reconciledMethod = null
+    ): bool
+    {
+        if ($amount < 0
+            || ($reconciledMethod !== null
+                && !in_array($reconciledMethod, ['direct', 'online'], true))) {
+            return false;
+        }
+
+        $this->pdo->beginTransaction();
+        try {
+            $lookup = $this->pdo->prepare(
+                'SELECT nightly_rate, check_in, check_out, paid_amount, payment_method
+                 FROM bookings WHERE id = ? FOR UPDATE'
+            );
+            $lookup->execute([$bookingId]);
+            $booking = $lookup->fetch();
+            if (!$booking) {
+                $this->pdo->rollBack();
+                return false;
+            }
+
+            $isUnreconciled = $booking['payment_method'] === 'unknown';
+            if (($isUnreconciled && $reconciledMethod === null)
+                || (!$isUnreconciled && ($reconciledMethod !== null || $amount < 1))) {
+                $this->pdo->rollBack();
+                return false;
+            }
+
+            $totalAmount = (int) $booking['nightly_rate']
+                * (int) (new DateTimeImmutable($booking['check_in']))
+                    ->diff(new DateTimeImmutable($booking['check_out']))->days;
+            $paidAmount = (int) $booking['paid_amount'];
+            if ($amount > $totalAmount - $paidAmount) {
+                $this->pdo->rollBack();
+                return false;
+            }
+
+            if ($isUnreconciled) {
+                $update = $this->pdo->prepare(
+                    'UPDATE bookings SET payment_method = ?, paid_amount = paid_amount + ?
+                     WHERE id = ?'
+                );
+                $update->execute([$reconciledMethod, $amount, $bookingId]);
+            } else {
+                $update = $this->pdo->prepare(
+                    'UPDATE bookings SET paid_amount = paid_amount + ? WHERE id = ?'
+                );
+                $update->execute([$amount, $bookingId]);
+            }
             $this->pdo->commit();
             return true;
         } catch (Throwable $exception) {

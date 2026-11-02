@@ -26,6 +26,16 @@
     </section>
 </div>
 
+<h4>Trạng thái thanh toán trong tháng</h4>
+<div class="summary-grid">
+    <?php foreach ($summary['payment_statuses'] as $status => $count): ?>
+        <section class="summary-card">
+            <span><?= htmlspecialchars($status, ENT_QUOTES, 'UTF-8') ?></span>
+            <strong><?= number_format((int) $count, 0, ',', '.') ?> lượt</strong>
+        </section>
+    <?php endforeach; ?>
+</div>
+
 <p class="notice">
     Báo cáo tính các lượt thuê có ngày lưu trú giao với tháng đã chọn; tiền phòng được phân bổ theo số đêm nằm trong tháng.
     Đây là doanh thu tiền phòng dự kiến, chưa trừ chi phí, thuế hoặc xác nhận thanh toán — không phải lợi nhuận ròng.
@@ -40,7 +50,11 @@
                 <th>Khách hàng</th>
                 <th>Nhận phòng</th>
                 <th>Trả phòng</th>
-                <th>Trạng thái</th>
+                <th>Trạng thái lượt thuê</th>
+                <th>Trạng thái thanh toán</th>
+                <th>Cọc yêu cầu</th>
+                <th>Đã thu</th>
+                <th>Còn phải thu</th>
                 <th>Đêm trong tháng</th>
                 <th>Đơn giá/đêm</th>
                 <th>Doanh thu trong tháng</th>
@@ -48,19 +62,36 @@
         </thead>
         <tbody>
             <?php foreach ($bookings as $booking): ?>
+                <?php
+                $paymentStatusClass = match ($booking['payment_status']) {
+                    'Đã thanh toán' => 'paid',
+                    'Đã đặt cọc', 'Đã thu một phần' => 'partial',
+                    default => '',
+                };
+                ?>
                 <tr>
                     <td><?= htmlspecialchars($booking['room_name'], ENT_QUOTES, 'UTF-8') ?></td>
                     <td><?= htmlspecialchars((string) $booking['customer_name'], ENT_QUOTES, 'UTF-8') ?></td>
                     <td><?= htmlspecialchars($booking['check_in'], ENT_QUOTES, 'UTF-8') ?></td>
                     <td><?= htmlspecialchars($booking['check_out'], ENT_QUOTES, 'UTF-8') ?></td>
                     <td><?= $booking['status'] === 'Active' ? 'Đang thuê' : 'Đã trả phòng' ?></td>
+                    <td>
+                        <span class="payment-status <?= htmlspecialchars($paymentStatusClass, ENT_QUOTES, 'UTF-8') ?>">
+                            <?= htmlspecialchars((string) $booking['payment_status'], ENT_QUOTES, 'UTF-8') ?>
+                        </span>
+                    </td>
+                    <td><?= number_format((int) $booking['deposit_required'], 0, ',', '.') ?> ₫</td>
+                    <td><?= number_format((int) $booking['paid_amount'], 0, ',', '.') ?> ₫</td>
+                    <td><?= $booking['balance_due'] === null
+                        ? 'Chưa đối soát'
+                        : number_format((int) $booking['balance_due'], 0, ',', '.') . ' ₫' ?></td>
                     <td><?= number_format((int) $booking['nights_in_month'], 0, ',', '.') ?></td>
                     <td><?= number_format((int) $booking['nightly_rate'], 0, ',', '.') ?> ₫</td>
                     <td><strong><?= number_format((int) $booking['revenue_in_month'], 0, ',', '.') ?> ₫</strong></td>
                 </tr>
             <?php endforeach; ?>
             <?php if (!$bookings): ?>
-                <tr><td colspan="8">Không có lượt thuê nào trong tháng đã chọn.</td></tr>
+                <tr><td colspan="12">Không có lượt thuê nào trong tháng đã chọn.</td></tr>
             <?php endif; ?>
         </tbody>
     </table>

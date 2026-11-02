@@ -31,6 +31,24 @@
         .tabs .btn.btn-warning { background: #fff4d8; color: #75530f; }
         .form-group { margin-bottom: 15px; text-align: left; }
         input[type="text"], input[type="password"], input[type="date"], input[type="month"], input[type="email"], input[type="number"], input[type="file"], textarea { width: 100%; padding: 11px 12px; border: 1px solid #cbd5e1; border-radius: 9px; background: #fff; font: inherit; }
+        input[type="radio"] { accent-color: var(--brand); }
+        .payment-options { padding: 0; border: 0; }
+        .payment-options legend { margin-bottom: 8px; font-weight: 700; }
+        .payment-option { display: flex; align-items: center; gap: 9px; padding: 11px; margin: 7px 0; border: 1px solid var(--line); border-radius: 9px; cursor: pointer; }
+        .payment-option input { width: auto; margin: 0; }
+        .form-hint { color: var(--muted); font-size: .88rem; line-height: 1.5; }
+        .payment-status { display: inline-flex; padding: 5px 9px; border-radius: 999px; background: #fff4d8; color: #75530f; font-size: .82rem; font-weight: 700; white-space: nowrap; }
+        .payment-status.paid { background: #e6f4ee; color: #176b4b; }
+        .payment-status.partial { background: #eaf3ff; color: #285d91; }
+        .table-wrap { width: 100%; overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; }
+        .table-wrap table { min-width: 1050px; }
+        .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin: 18px 0; }
+        .summary-card { padding: 16px; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
+        .summary-card span { display: block; color: var(--muted); font-size: .88rem; }
+        .summary-card strong { display: block; margin-top: 6px; font-size: 1.2rem; }
+        .inline-payment-form { min-width: 200px; }
+        .inline-payment-form input, .inline-payment-form select { width: 100%; margin: 4px 0; padding: 8px; border: 1px solid #cbd5e1; border-radius: 8px; font: inherit; }
+        .notice { padding: 12px 14px; border-radius: 10px; background: #eef6ff; color: #285d91; line-height: 1.5; }
         input:focus { outline: 3px solid rgba(23, 107, 99, .15); border-color: var(--brand); }
         textarea:focus { outline: 3px solid rgba(23, 107, 99, .15); border-color: var(--brand); }
         table { width: 100%; border-collapse: collapse; }
@@ -122,6 +140,7 @@
                 <a href="index.php?action=admin" class="btn <?= in_array($action, ['admin', 'dashboard', 'checkout'], true) ? 'active' : '' ?>">Tổng quan</a>
                 <a href="index.php?action=admin_rooms" class="btn <?= in_array($action, ['admin_rooms', 'room_add', 'room_price', 'room_delete', 'room_photo', 'room_image_delete', 'room_description'], true) ? 'active' : '' ?>">Quản lý phòng</a>
                 <a href="index.php?action=monthly_report" class="btn <?= $action === 'monthly_report' ? 'active' : '' ?>">Lượt thuê &amp; doanh thu</a>
+                <a href="index.php?action=payments" class="btn <?= in_array($action, ['payments', 'payment_record'], true) ? 'active' : '' ?>">Thanh toán</a>
                 <a href="index.php?action=admin_accounts" class="btn <?= in_array($action, ['admin_accounts', 'admin_add'], true) ? 'active' : '' ?>">Tài khoản admin</a>
                 <a href="index.php?action=customer" class="btn btn-warning">Khu vực khách hàng</a>
             <?php else: ?>
@@ -144,7 +163,7 @@
             'dangnhap.php', 'dangky.php', 'quanlyadmin.php', 'datphongadmin.php',
             'giahanadmin.php', 'khachhang.php', 'adminphong.php', 'admintaikhoan.php',
             'quenmatkhau.php', 'datlaimatkhau.php',
-            'baocao.php', 'thongtinphong.php',
+            'baocao.php', 'thongtinphong.php', 'thanhtoan.php',
         ];
         if (in_array($view, $allowedViews, true)) {
             require __DIR__ . '/' . $view;

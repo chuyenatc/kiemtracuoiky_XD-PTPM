@@ -21,12 +21,21 @@ class DatPhongController extends ControllerChung
             $customerName = $_POST['customer_name'] ?? '';
             $checkIn = $_POST['check_in'] ?? '';
             $checkOut = $_POST['check_out'] ?? '';
+            $paymentMethod = $_POST['payment_method'] ?? '';
             if (!is_string($customerName) || trim($customerName) === ''
                 || !is_string($checkIn) || !$this->validDate($checkIn)
                 || !is_string($checkOut) || !$this->validDate($checkOut)
-                || $checkOut <= $checkIn) {
-                $this->error = 'Vui lòng nhập tên khách và ngày trả phòng sau ngày nhận phòng.';
-            } elseif (!$this->model->datphong($roomId, trim($customerName), $checkIn, $checkOut)) {
+                || $checkOut <= $checkIn
+                || !is_string($paymentMethod)
+                || !in_array($paymentMethod, ['direct', 'online'], true)) {
+                $this->error = 'Vui lòng nhập tên khách, ngày trả sau ngày nhận và chọn phương thức thanh toán.';
+            } elseif (!$this->model->datphong(
+                $roomId,
+                trim($customerName),
+                $checkIn,
+                $checkOut,
+                $paymentMethod
+            )) {
                 $this->error = 'Phòng vừa được đặt bởi người khác. Vui lòng chọn phòng khác.';
             } else {
                 $this->redirectToDashboard();

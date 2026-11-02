@@ -64,6 +64,12 @@ Views (`views/`): Chứa layout và các mẫu giao diện; không xử lý requ
    
 dùng plane sinh ra hệ thống
 
+8, Thanh toán và đối soát
+ - Khi đặt phòng, khách chọn thanh toán trực tiếp hoặc chuyển khoản/QR. Lựa chọn online hiện chỉ được lưu lại, chưa tích hợp cổng thanh toán; admin cần đối soát giao dịch và ghi nhận số tiền thực nhận trong tab “Thanh toán”.
+ - Nếu ngày nhận phòng lớn hơn ngày hiện tại, hệ thống tính cọc bắt buộc bằng 20% tổng tiền dự kiến (làm tròn lên đến đồng); nhận phòng trong ngày không yêu cầu cọc trước. Admin có thể ghi nhận nhiều khoản thu, số tiền vượt quá tổng tiền lượt thuê sẽ bị từ chối.
+ - Tab “Thanh toán” hiển thị tiền cọc yêu cầu, tiền đã thu, số dư còn lại và trạng thái thanh toán cho cả lượt đang thuê lẫn đã trả phòng. Các lượt thuê có trước khi cập nhật được đánh dấu “Chưa đối soát”; admin cần nhập phương thức thực tế và số đã thu (nhập 0 nếu chưa xác nhận khoản thu).
+ - Với cơ sở dữ liệu cũ, sao lưu trước rồi chạy một lần `migrations/20261103_add_booking_payments.sql` sau khi đã áp dụng các migration cập nhật schema phòng. Migration đánh dấu lượt thuê cũ là chưa đối soát và tính cọc cho các lượt có ngày nhận phòng trong tương lai. Không chạy lại migration này.
+
 ## Chạy dự án bằng Docker
 
 1. Cài Docker Desktop và mở Docker Engine.

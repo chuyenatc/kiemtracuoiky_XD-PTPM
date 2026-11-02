@@ -46,5 +46,8 @@ CREATE TABLE bookings (
     check_in DATE,
     check_out DATE,
     nightly_rate BIGINT UNSIGNED NOT NULL DEFAULT 0,
+    payment_method ENUM('direct', 'online', 'unknown') NOT NULL DEFAULT 'unknown',
+    deposit_required BIGINT UNSIGNED NOT NULL DEFAULT 0,
+    paid_amount BIGINT UNSIGNED NOT NULL DEFAULT 0,
     status ENUM('Active', 'Completed') DEFAULT 'Active'
 );

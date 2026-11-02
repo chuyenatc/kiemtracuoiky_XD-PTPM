@@ -60,14 +60,14 @@ abstract class ControllerChung
         return 'index.php?action=book&id=' . $matches[1];
     }
 
-    protected function parseVndAmount(mixed $value): ?int
+    protected function parseVndAmount(mixed $value, bool $allowZero = false): ?int
     {
         if (!is_string($value) || !ctype_digit($value)) {
             return null;
         }
 
         $amount = filter_var($value, FILTER_VALIDATE_INT, [
-            'options' => ['min_range' => 1, 'max_range' => 999999999],
+            'options' => ['min_range' => $allowZero ? 0 : 1, 'max_range' => 999999999],
         ]);
         return $amount === false ? null : $amount;
     }

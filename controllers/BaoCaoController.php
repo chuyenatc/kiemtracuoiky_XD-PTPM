@@ -25,6 +25,13 @@ class BaoCaoController extends ControllerChung
             'booking_count' => count($bookings),
             'nights' => 0,
             'revenue' => 0,
+            'payment_statuses' => [
+                'Chưa đối soát' => 0,
+                'Chưa thanh toán' => 0,
+                'Đã đặt cọc' => 0,
+                'Đã thu một phần' => 0,
+                'Đã thanh toán' => 0,
+            ],
         ];
 
         foreach ($bookings as &$booking) {
@@ -32,6 +39,7 @@ class BaoCaoController extends ControllerChung
             $booking['revenue_in_month'] = $booking['nights_in_month'] * (int) $booking['nightly_rate'];
             $summary['nights'] += $booking['nights_in_month'];
             $summary['revenue'] += $booking['revenue_in_month'];
+            $summary['payment_statuses'][$booking['payment_status']]++;
         }
         unset($booking);
 
