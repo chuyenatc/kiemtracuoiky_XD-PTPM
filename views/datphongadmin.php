@@ -50,9 +50,15 @@
             Chuyển khoản / QR online
         </label>
         <p class="form-hint">
-            Thanh toán online hiện được ghi nhận là phương thức đã chọn; admin xác nhận tiền sau khi đối soát giao dịch.
+            QR bên dưới chỉ dùng minh họa giao diện, không tạo giao dịch hoặc nhận tiền thật.
         </p>
     </fieldset>
+    <section id="qr-payment-preview" class="qr-preview" aria-live="polite" hidden>
+        <h4>Quét mã QR thanh toán</h4>
+        <p id="qr-payment-amount">Chọn ngày để xem số tiền cần thanh toán.</p>
+        <div id="qr-mock" class="qr-mock" role="img" aria-label="Mã QR minh họa, không thể dùng để thanh toán"></div>
+        <p class="qr-preview-warning">QR minh họa — không dùng để chuyển tiền. Khoản thanh toán chỉ được xác nhận sau khi admin đối soát.</p>
+    </section>
     <button type="submit" class="btn">Xác nhận đặt phòng</button>
     <a href="index.php?action=dashboard" class="btn btn-danger">Hủy</a>
 </form>
@@ -62,15 +68,54 @@
         const checkOut = document.getElementById('check_out');
         const estimate = document.getElementById('booking-estimate');
         const depositEstimate = document.getElementById('deposit-estimate');
+        const qrPreview = document.getElementById('qr-payment-preview');
+        const qrAmount = document.getElementById('qr-payment-amount');
+        const qrMock = document.getElementById('qr-mock');
+        const paymentMethods = document.querySelectorAll('input[name="payment_method"]');
         const nightlyRate = <?= (int) $room['nightly_rate'] ?>;
         const formatter = new Intl.NumberFormat('vi-VN');
         const today = new Date();
         const todayValue = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
+        const drawMockQr = () => {
+            let seed = 20261103;
+            const nextBit = () => {
+                seed = (seed * 1664525 + 1013904223) >>> 0;
+                return (seed >>> 31) === 1;
+            };
+            const inFinder = (row, column, top, left) =>
+                row >= top && row < top + 7 && column >= left && column < left + 7;
+            const finderBit = (row, column, top, left) => {
+                const y = row - top;
+                const x = column - left;
+                return y === 0 || y === 6 || x === 0 || x === 6
+                    || (y >= 2 && y <= 4 && x >= 2 && x <= 4);
+            };
+
+            for (let row = 0; row < 21; row++) {
+                for (let column = 0; column < 21; column++) {
+                    let dark = nextBit();
+                    for (const [top, left] of [[0, 0], [0, 14], [14, 0]]) {
+                        if (inFinder(row, column, top, left)) {
+                            dark = finderBit(row, column, top, left);
+                        }
+                    }
+                    const module = document.createElement('span');
+                    if (dark) module.classList.add('is-dark');
+                    qrMock.append(module);
+                }
+            }
+        };
+        drawMockQr();
+
         const updateEstimate = () => {
+            const isOnline = document.querySelector('input[name="payment_method"]:checked')?.value === 'online';
+            qrPreview.hidden = !isOnline;
+
             if (!checkIn.value || !checkOut.value) {
                 estimate.textContent = 'Chọn ngày để xem tổng tiền dự kiến.';
                 depositEstimate.textContent = 'Lượt nhận phòng từ ngày mai trở đi cần đặt cọc 20% tổng tiền dự kiến.';
+                qrAmount.textContent = 'Chọn ngày hợp lệ để xem số tiền thanh toán.';
                 return;
             }
 
@@ -80,6 +125,7 @@
             if (nights <= 0) {
                 estimate.textContent = 'Ngày trả phòng phải sau ngày nhận phòng.';
                 depositEstimate.textContent = 'Vui lòng chọn ngày hợp lệ để tính tiền cọc.';
+                qrAmount.textContent = 'Ngày trả phòng phải sau ngày nhận phòng.';
                 return;
             }
 
@@ -89,9 +135,13 @@
             depositEstimate.textContent = deposit > 0
                 ? `Cọc bắt buộc 20%: ${formatter.format(deposit)} ₫. Còn lại: ${formatter.format(total - deposit)} ₫.`
                 : 'Nhận phòng hôm nay: không yêu cầu đặt cọc trước.';
+            qrAmount.textContent = deposit > 0
+                ? `Số tiền cọc minh họa: ${formatter.format(deposit)} ₫`
+                : `Tổng tiền minh họa: ${formatter.format(total)} ₫`;
         };
 
         checkIn.addEventListener('change', updateEstimate);
         checkOut.addEventListener('change', updateEstimate);
+        paymentMethods.forEach((method) => method.addEventListener('change', updateEstimate));
     })();
 </script>

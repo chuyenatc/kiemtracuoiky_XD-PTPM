@@ -49,6 +49,13 @@
         .inline-payment-form { min-width: 200px; }
         .inline-payment-form input, .inline-payment-form select { width: 100%; margin: 4px 0; padding: 8px; border: 1px solid #cbd5e1; border-radius: 8px; font: inherit; }
         .notice { padding: 12px 14px; border-radius: 10px; background: #eef6ff; color: #285d91; line-height: 1.5; }
+        .qr-preview { max-width: 360px; margin: 14px 0; padding: 18px; border: 1px solid var(--line); border-radius: 14px; background: #fff; text-align: center; }
+        .qr-preview[hidden] { display: none; }
+        .qr-preview h4 { margin: 0 0 8px; }
+        .qr-mock { display: grid; grid-template-columns: repeat(21, 1fr); gap: 1px; width: min(100%, 220px); aspect-ratio: 1; margin: 14px auto; padding: 8px; border: 1px solid #e2e8f0; background: #fff; }
+        .qr-mock span { background: #fff; }
+        .qr-mock span.is-dark { background: #172b4d; }
+        .qr-preview-warning { color: #a63e20; font-size: .88rem; font-weight: 700; line-height: 1.5; }
         input:focus { outline: 3px solid rgba(23, 107, 99, .15); border-color: var(--brand); }
         textarea:focus { outline: 3px solid rgba(23, 107, 99, .15); border-color: var(--brand); }
         table { width: 100%; border-collapse: collapse; }
