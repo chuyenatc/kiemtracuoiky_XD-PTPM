@@ -21,8 +21,21 @@ CREATE TABLE rooms (
     id INT AUTO_INCREMENT KEY,
     room_name VARCHAR(20) NOT NULL UNIQUE,
     nightly_rate BIGINT UNSIGNED NOT NULL DEFAULT 0,
+    description TEXT NULL,
+    image_path VARCHAR(255) NULL,
     status ENUM('Trống', 'Đang thuê') DEFAULT 'Trống'
 );
+
+CREATE TABLE room_images (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    room_id INT NOT NULL,
+    image_path VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_room_images_path (room_id, image_path),
+    CONSTRAINT fk_room_images_room
+        FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE
+);
+
 INSERT INTO rooms (room_name, nightly_rate) VALUES
     ('101', 500000), ('102', 500000), ('201', 650000), ('202', 650000);
 

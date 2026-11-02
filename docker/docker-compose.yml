@@ -5,6 +5,8 @@ services:
       dockerfile: docker/Dockerfile
     ports:
       - "${APP_PORT:-8080}:80"
+    volumes:
+      - hotel_room_uploads:/var/www/html/uploads/rooms
     environment:
       DB_HOST: db
       DB_NAME: hotel_mvc
@@ -36,3 +38,4 @@ services:
 
 volumes:
   hotel_mysql_data:
+  hotel_room_uploads:

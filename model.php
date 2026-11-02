@@ -90,31 +90,127 @@ class Model
              LEFT JOIN bookings b ON r.id = b.room_id AND b.status = 'Active'
              ORDER BY r.room_name"
         );
-        return $stmt->fetchAll();
+        return $this->ganAnhPhong($stmt->fetchAll());
     }
 
     public function danhSachPhongKhach(): array
     {
         $stmt = $this->pdo->query(
-            'SELECT id, room_name, status, nightly_rate FROM rooms ORDER BY room_name'
+            'SELECT id, room_name, status, nightly_rate, image_path FROM rooms ORDER BY room_name'
         );
-        return $stmt->fetchAll();
+        return $this->ganAnhPhong($stmt->fetchAll());
     }
 
-    public function themPhong(string $roomName, int $nightlyRate): bool
+    public function themPhong(string $roomName, int $nightlyRate, array $imagePaths = []): bool
     {
+        return $this->taoPhong($roomName, $nightlyRate, '', $imagePaths);
+    }
+
+    public function taoPhong(string $roomName, int $nightlyRate, string $description, array $imagePaths = []): bool
+    {
+        $this->pdo->beginTransaction();
         try {
             $stmt = $this->pdo->prepare(
-                "INSERT INTO rooms (room_name, status, nightly_rate) VALUES (?, 'Trống', ?)"
+                "INSERT INTO rooms (room_name, status, nightly_rate, description) VALUES (?, 'Trống', ?, ?)"
             );
-            $stmt->execute([$roomName, $nightlyRate]);
+            $stmt->execute([$roomName, $nightlyRate, $description]);
+            $roomId = (int) $this->pdo->lastInsertId();
+            $this->insertRoomImages($roomId, $imagePaths);
+            $this->pdo->commit();
             return true;
         } catch (PDOException $exception) {
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
             if (isset($exception->errorInfo[1]) && $exception->errorInfo[1] === 1062) {
                 return false;
             }
             throw $exception;
+        } catch (Throwable $exception) {
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+            throw $exception;
         }
+    }
+
+    public function capNhatMoTaPhong(int $roomId, string $description): bool
+    {
+        $stmt = $this->pdo->prepare('UPDATE rooms SET description = ? WHERE id = ?');
+        $stmt->execute([$description, $roomId]);
+        if ($stmt->rowCount() === 1) {
+            return true;
+        }
+
+        $exists = $this->pdo->prepare('SELECT id FROM rooms WHERE id = ?');
+        $exists->execute([$roomId]);
+        return $exists->fetchColumn() !== false;
+    }
+
+    public function themNhieuAnhPhong(int $roomId, array $imagePaths): bool
+    {
+        $this->pdo->beginTransaction();
+        try {
+            $room = $this->pdo->prepare('SELECT id FROM rooms WHERE id = ? FOR UPDATE');
+            $room->execute([$roomId]);
+            if ($room->fetchColumn() === false) {
+                $this->pdo->rollBack();
+                return false;
+            }
+
+            $this->insertRoomImages($roomId, $imagePaths);
+            $this->pdo->commit();
+            return true;
+        } catch (Throwable $exception) {
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+            throw $exception;
+        }
+    }
+
+    public function xoaAnhPhong(int $imageId): ?string
+    {
+        $this->pdo->beginTransaction();
+        try {
+            $lookup = $this->pdo->prepare(
+                'SELECT image_path FROM room_images WHERE id = ? FOR UPDATE'
+            );
+            $lookup->execute([$imageId]);
+            $imagePath = $lookup->fetchColumn();
+            if ($imagePath === false) {
+                $this->pdo->rollBack();
+                return null;
+            }
+
+            $delete = $this->pdo->prepare('DELETE FROM room_images WHERE id = ?');
+            $delete->execute([$imageId]);
+            $this->pdo->commit();
+            return (string) $imagePath;
+        } catch (Throwable $exception) {
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+            throw $exception;
+        }
+    }
+
+    public function baoCaoLuotThueTheoThang(string $monthStart, string $nextMonthStart): array
+    {
+        $stmt = $this->pdo->prepare(
+            'SELECT b.id, b.customer_name, b.check_in, b.check_out, b.nightly_rate, b.status,
+                    r.room_name,
+                    GREATEST(
+                        DATEDIFF(LEAST(b.check_out, ?), GREATEST(b.check_in, ?)),
+                        0
+                    ) AS nights_in_month
+             FROM bookings b
+             INNER JOIN rooms r ON r.id = b.room_id
+             WHERE b.check_in < ? AND b.check_out > ?
+             ORDER BY b.check_in DESC, b.id DESC'
+        );
+        $stmt->execute([$nextMonthStart, $monthStart, $nextMonthStart, $monthStart]);
+        return $stmt->fetchAll();
     }
 
     public function capNhatGiaPhong(int $roomId, int $nightlyRate): bool
@@ -201,7 +297,64 @@ class Model
         $stmt = $this->pdo->prepare('SELECT * FROM rooms WHERE id = ?');
         $stmt->execute([$id]);
         $room = $stmt->fetch();
-        return $room === false ? null : $room;
+        if ($room === false) {
+            return null;
+        }
+
+        return $this->ganAnhPhong([$room])[0];
+    }
+
+    private function ganAnhPhong(array $rooms): array
+    {
+        if (!$rooms) {
+            return [];
+        }
+
+        $roomIds = array_map(static fn (array $room): int => (int) $room['id'], $rooms);
+        $placeholders = implode(',', array_fill(0, count($roomIds), '?'));
+        $stmt = $this->pdo->prepare(
+            "SELECT id, room_id, image_path FROM room_images
+             WHERE room_id IN ({$placeholders})
+             ORDER BY room_id, id"
+        );
+        $stmt->execute($roomIds);
+
+        $imagesByRoom = [];
+        foreach ($stmt->fetchAll() as $image) {
+            $imagesByRoom[(int) $image['room_id']][] = $image;
+        }
+
+        foreach ($rooms as &$room) {
+            $roomId = (int) $room['id'];
+            $room['images'] = $imagesByRoom[$roomId] ?? [];
+            $legacyPath = $room['image_path'] ?? null;
+            if (is_string($legacyPath)
+                && $legacyPath !== ''
+                && !in_array($legacyPath, array_column($room['images'], 'image_path'), true)) {
+                array_unshift($room['images'], [
+                    'id' => null,
+                    'room_id' => $roomId,
+                    'image_path' => $legacyPath,
+                ]);
+            }
+        }
+        unset($room);
+
+        return $rooms;
+    }
+
+    private function insertRoomImages(int $roomId, array $imagePaths): void
+    {
+        if (!$imagePaths) {
+            return;
+        }
+
+        $stmt = $this->pdo->prepare(
+            'INSERT INTO room_images (room_id, image_path) VALUES (?, ?)'
+        );
+        foreach ($imagePaths as $imagePath) {
+            $stmt->execute([$roomId, $imagePath]);
+        }
     }
 
     public function layLuotThue(int $id): ?array

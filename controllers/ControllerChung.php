@@ -72,6 +72,116 @@ abstract class ControllerChung
         return $amount === false ? null : $amount;
     }
 
+    protected function storeRoomImage(mixed $upload): string
+    {
+        if (!is_array($upload) || !isset($upload['error'], $upload['tmp_name'], $upload['size'])) {
+            throw new InvalidArgumentException('Không nhận được tệp ảnh tải lên.');
+        }
+
+        if ($upload['error'] !== UPLOAD_ERR_OK) {
+            $message = match ($upload['error']) {
+                UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE => 'Ảnh vượt quá dung lượng cho phép 5 MB.',
+                UPLOAD_ERR_NO_FILE => 'Vui lòng chọn ảnh phòng.',
+                default => 'Không thể nhận ảnh tải lên. Vui lòng thử lại.',
+            };
+            throw new InvalidArgumentException($message);
+        }
+
+        if (!is_string($upload['tmp_name'])
+            || !is_uploaded_file($upload['tmp_name'])
+            || !is_int($upload['size'])
+            || $upload['size'] < 1
+            || $upload['size'] > 5 * 1024 * 1024) {
+            throw new InvalidArgumentException('Ảnh phải có dung lượng tối đa 5 MB.');
+        }
+
+        $imageInfo = @getimagesize($upload['tmp_name']);
+        $finfo = new finfo(FILEINFO_MIME_TYPE);
+        $mimeType = $finfo->file($upload['tmp_name']);
+        $extensions = [
+            'image/jpeg' => 'jpg',
+            'image/png' => 'png',
+            'image/webp' => 'webp',
+        ];
+        if (!is_array($imageInfo)
+            || !isset($extensions[$mimeType])
+            || $imageInfo['mime'] !== $mimeType
+            || $imageInfo[0] > 10000
+            || $imageInfo[1] > 10000) {
+            throw new InvalidArgumentException('Chỉ chấp nhận ảnh JPEG, PNG hoặc WebP hợp lệ.');
+        }
+
+        $directory = __DIR__ . '/../uploads/rooms';
+        if (!is_dir($directory) && !mkdir($directory, 0775, true) && !is_dir($directory)) {
+            throw new RuntimeException('Không thể tạo thư mục lưu ảnh phòng.');
+        }
+
+        $filename = bin2hex(random_bytes(16)) . '.' . $extensions[$mimeType];
+        $destination = $directory . '/' . $filename;
+        if (!move_uploaded_file($upload['tmp_name'], $destination)) {
+            throw new RuntimeException('Không thể lưu ảnh phòng đã tải lên.');
+        }
+
+        return 'uploads/rooms/' . $filename;
+    }
+
+    protected function storeRoomImages(mixed $uploads): array
+    {
+        if ($uploads === null) {
+            return [];
+        }
+
+        if (!is_array($uploads)
+            || !isset($uploads['name'], $uploads['tmp_name'], $uploads['error'], $uploads['size'])
+            || !is_array($uploads['name'])
+            || !is_array($uploads['tmp_name'])
+            || !is_array($uploads['error'])
+            || !is_array($uploads['size'])) {
+            throw new InvalidArgumentException('Dữ liệu ảnh tải lên không hợp lệ.');
+        }
+
+        if (count($uploads['name']) > 10) {
+            throw new InvalidArgumentException('Mỗi lần chỉ có thể tải lên tối đa 10 ảnh.');
+        }
+
+        $imagePaths = [];
+        try {
+            foreach ($uploads['name'] as $index => $name) {
+                $error = $uploads['error'][$index] ?? UPLOAD_ERR_NO_FILE;
+                if ($error === UPLOAD_ERR_NO_FILE) {
+                    continue;
+                }
+
+                $imagePaths[] = $this->storeRoomImage([
+                    'name' => $name,
+                    'tmp_name' => $uploads['tmp_name'][$index] ?? null,
+                    'error' => $error,
+                    'size' => $uploads['size'][$index] ?? null,
+                ]);
+            }
+        } catch (Throwable $exception) {
+            foreach ($imagePaths as $imagePath) {
+                $this->deleteRoomImage($imagePath);
+            }
+            throw $exception;
+        }
+
+        return $imagePaths;
+    }
+
+    protected function deleteRoomImage(?string $imagePath): void
+    {
+        if (!is_string($imagePath)
+            || !preg_match('/\Auploads\/rooms\/[a-f0-9]{32}\.(?:jpg|png|webp)\z/', $imagePath)) {
+            return;
+        }
+
+        $file = __DIR__ . '/../' . $imagePath;
+        if (is_file($file) && !unlink($file)) {
+            error_log('Unable to remove replaced room image: ' . $imagePath);
+        }
+    }
+
     protected function mailConfigured(): bool
     {
         $appUrl = rtrim((string) getenv('HOTEL_APP_URL'), '/');

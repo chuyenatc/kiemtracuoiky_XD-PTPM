@@ -45,8 +45,19 @@ Views (`views/`): Chứa layout và các mẫu giao diện; không xử lý requ
 4, Khu vực khách hàng
  - Tab khách hàng hiển thị trạng thái phòng và cho phép tài khoản khách hàng đặt phòng còn trống.
  - Khách hàng đăng ký tài khoản thường; chỉ tài khoản có vai trò admin mới được cấp quyền quản trị.
+ - Mỗi phòng có thể có nhiều ảnh mô tả và nội dung mô tả phòng. Admin có thể chọn tối đa 10 ảnh mỗi lần (JPEG, PNG hoặc WebP; tối đa 5 MB/ảnh), thêm/xóa ảnh và cập nhật mô tả. Khách nhấn vào ảnh hoặc tên phòng để mở trang thông tin chi tiết; ảnh được xem từng ảnh một bằng nút điều hướng.
 
-6, Giá thuê và khôi phục mật khẩu
+5, Báo cáo lượt thuê theo tháng
+ - Tab “Lượt thuê & doanh thu” dành cho admin, cho phép chọn tháng và xem số lượt thuê, số đêm cùng doanh thu tiền phòng dự kiến.
+ - Một lượt thuê được tính nếu khoảng ngày lưu trú giao với tháng đã chọn; tiền phòng được tính theo số đêm nằm trong tháng và đơn giá đã lưu trong lượt thuê.
+ - Đây là doanh thu tiền phòng, không phải lợi nhuận ròng vì hệ thống chưa lưu chi phí, thuế hoặc xác nhận thanh toán.
+
+6, Ảnh phòng và cập nhật cơ sở dữ liệu
+ - Ảnh phòng được lưu trong bảng `room_images`, một phòng có thể có nhiều bản ghi ảnh. Ảnh được kiểm tra định dạng nội dung, chỉ chấp nhận JPEG/PNG/WebP; tên file được tạo ngẫu nhiên.
+ - Với cơ sở dữ liệu đã tồn tại, sao lưu trước. Nếu chưa cập nhật schema để có `rooms.image_path`, chạy `migrations/20261103_add_room_images.sql` trước; tiếp theo chạy `migrations/20261103_add_room_images_gallery.sql` để tạo bảng ảnh và chuyển ảnh hiện có; cuối cùng chạy `migrations/20261103_add_room_description.sql` để thêm nội dung mô tả. Migration gallery có thể chạy lại an toàn; các migration ALTER TABLE chỉ chạy một lần.
+ - Docker lưu ảnh tải lên trong volume `hotel_room_uploads`, độc lập với vòng đời container ứng dụng. Tránh xóa volume này nếu cần giữ ảnh phòng.
+
+7, Giá thuê và khôi phục mật khẩu
  - Giá phòng được tính theo đêm, bằng VND. Admin có thể đặt giá khi thêm phòng hoặc cập nhật giá trong tab quản lý phòng. Hệ thống lưu lại đơn giá tại thời điểm đặt phòng để các lượt thuê cũ không bị đổi giá khi admin cập nhật bảng giá; tổng tiền dự kiến được tính theo số đêm.
  - Để cập nhật CSDL cũ, chạy một lần các lệnh sau. Trước khi chạy, sao lưu CSDL:
 
@@ -67,5 +78,7 @@ dùng plane sinh ra hệ thống
 5. Dừng các container bằng `docker compose --env-file docker/.env -f docker/docker-compose.yml down`. Dữ liệu MySQL được lưu trong volume `hotel_mysql_data`; không dùng `docker compose down -v` nếu muốn giữ dữ liệu.
 
 `database.sql` chỉ được MySQL nạp tự động khi volume dữ liệu được tạo lần đầu. Tài khoản ứng dụng kết nối MySQL bằng `MYSQL_USER`; `MYSQL_ROOT_PASSWORD` chỉ dành cho quản trị database. MySQL không được publish cổng ra máy host. Tài khoản demo của website là `admin` / `123456`; hãy đổi mật khẩu này trước khi đưa ứng dụng lên môi trường thật. Các biến `HOTEL_APP_URL` và `HOTEL_MAIL_FROM` dùng cho chức năng gửi email đặt lại mật khẩu.
+
+Khi cập nhật một dự án đã chạy từ trước, hãy áp dụng các migration theo đúng thứ tự hướng dẫn ở trên. Các migration không được tự chạy trên volume MySQL cũ. Sau khi cập nhật cấu hình Docker, tạo lại image ứng dụng bằng lệnh `docker compose --env-file docker/.env -f docker/docker-compose.yml up --build -d`.
 
 Nếu volume MySQL đã được khởi tạo bằng cấu hình cũ, các biến mật khẩu mới không tự đổi thông tin đăng nhập trong database đang tồn tại. Không xóa volume nếu cần giữ dữ liệu; cần cập nhật user MySQL hiện có trước khi khởi động lại ứng dụng.

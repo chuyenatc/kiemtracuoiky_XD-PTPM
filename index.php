@@ -32,7 +32,7 @@ $controllerArguments = [$model, $csrfToken, $error, $success];
 
 $adminActions = [
     'admin', 'admin_rooms', 'room_add', 'room_price', 'room_delete',
-    'admin_accounts', 'admin_add',
+    'room_photo', 'room_image_delete', 'room_description', 'admin_accounts', 'admin_add', 'monthly_report',
 ];
 if (in_array($action, $adminActions, true) && ($_SESSION['role'] ?? '') !== 'admin') {
     $_SESSION['flash_error'] = 'Bạn cần đăng nhập bằng tài khoản admin để sử dụng chức năng này.';
@@ -81,9 +81,14 @@ $controllers = [
     'room_add' => ['AdminPhongController.php', 'AdminPhongController'],
     'room_price' => ['AdminPhongController.php', 'AdminPhongController'],
     'room_delete' => ['AdminPhongController.php', 'AdminPhongController'],
+    'room_photo' => ['AdminPhongController.php', 'AdminPhongController'],
+    'room_image_delete' => ['AdminPhongController.php', 'AdminPhongController'],
+    'room_description' => ['AdminPhongController.php', 'AdminPhongController'],
     'admin_accounts' => ['AdminTaiKhoanController.php', 'AdminTaiKhoanController'],
     'admin_add' => ['AdminTaiKhoanController.php', 'AdminTaiKhoanController'],
+    'monthly_report' => ['BaoCaoController.php', 'BaoCaoController'],
     'customer' => ['KhachHangController.php', 'KhachHangController'],
+    'room_detail' => ['KhachHangController.php', 'KhachHangController'],
     'dashboard' => [($_SESSION['role'] ?? '') === 'admin' ? 'QuanLyAdminController.php' : 'KhachHangController.php',
         ($_SESSION['role'] ?? '') === 'admin' ? 'QuanLyAdminController' : 'KhachHangController'],
     'book' => ['DatPhongController.php', 'DatPhongController'],

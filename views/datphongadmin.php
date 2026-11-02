@@ -1,6 +1,25 @@
 <?php /** @var string $csrfToken */ ?>
 <?php /** @var array $room */ ?>
 <h3>Đặt phòng <?= htmlspecialchars($room['room_name'], ENT_QUOTES, 'UTF-8') ?></h3>
+<?php if (!empty($room['images'])): ?>
+    <div class="room-gallery" data-room-gallery aria-label="Ảnh phòng <?= htmlspecialchars($room['room_name'], ENT_QUOTES, 'UTF-8') ?>" style="max-width: 760px;">
+        <?php foreach ($room['images'] as $imageIndex => $image): ?>
+            <div class="room-photo-item <?= $imageIndex === 0 ? 'active' : '' ?>" data-gallery-slide aria-hidden="<?= $imageIndex === 0 ? 'false' : 'true' ?>">
+                <img class="room-image"
+                     src="<?= htmlspecialchars($image['image_path'], ENT_QUOTES, 'UTF-8') ?>"
+                     alt="Ảnh mô tả phòng <?= htmlspecialchars($room['room_name'], ENT_QUOTES, 'UTF-8') ?>"
+                     loading="lazy">
+            </div>
+        <?php endforeach; ?>
+        <?php if (count($room['images']) > 1): ?>
+            <div class="gallery-controls">
+                <button type="button" data-gallery-previous aria-label="Ảnh trước">‹</button>
+                <span class="gallery-counter" data-gallery-counter aria-live="polite">1 / <?= count($room['images']) ?></span>
+                <button type="button" data-gallery-next aria-label="Ảnh tiếp theo">›</button>
+            </div>
+        <?php endif; ?>
+    </div>
+<?php endif; ?>
 <p>Giá thuê: <strong><?= number_format((int) $room['nightly_rate'], 0, ',', '.') ?> ₫/đêm</strong></p>
 <p id="booking-estimate" role="status">Chọn ngày để xem tổng tiền dự kiến.</p>
 <form method="POST" style="max-width: 400px;">
