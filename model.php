@@ -117,6 +117,44 @@ class Model
         return $this->ganAnhPhong($stmt->fetchAll());
     }
 
+    public function layTaiKhoan(string $username): ?array
+    {
+        $stmt = $this->pdo->prepare('SELECT id, username, role FROM users WHERE username = ?');
+        $stmt->execute([$username]);
+        $user = $stmt->fetch();
+        return $user === false ? null : $user;
+    }
+
+    public function danhSachLuotThueKhach(int $userId): array
+    {
+        $stmt = $this->pdo->prepare(
+            "SELECT b.id, b.customer_name, b.check_in, b.check_out, b.nightly_rate,
+                    b.payment_method, b.deposit_required, b.paid_amount, b.status,
+                    r.room_name,
+                    DATEDIFF(b.check_out, b.check_in) * b.nightly_rate AS booking_total,
+                    CASE WHEN b.payment_method = 'unknown' THEN NULL ELSE GREATEST(
+                        CAST(DATEDIFF(b.check_out, b.check_in) * b.nightly_rate AS DECIMAL(30, 0))
+                            - CAST(b.paid_amount AS DECIMAL(30, 0)),
+                        0
+                    ) END AS balance_due,
+                    CASE
+                        WHEN b.payment_method = 'unknown' THEN 'Chưa đối soát'
+                        WHEN b.paid_amount >= DATEDIFF(b.check_out, b.check_in) * b.nightly_rate
+                            THEN 'Đã thanh toán'
+                        WHEN b.deposit_required > 0 AND b.paid_amount >= b.deposit_required
+                            THEN 'Đã đặt cọc'
+                        WHEN b.paid_amount > 0 THEN 'Đã thu một phần'
+                        ELSE 'Chưa thanh toán'
+                    END AS payment_status
+             FROM bookings b
+             INNER JOIN rooms r ON r.id = b.room_id
+             WHERE b.user_id = ? AND b.status = 'Active'
+             ORDER BY b.check_in DESC, b.id DESC"
+        );
+        $stmt->execute([$userId]);
+        return $stmt->fetchAll();
+    }
+
     public function themPhong(string $roomName, int $nightlyRate, array $imagePaths = []): bool
     {
         return $this->taoPhong($roomName, $nightlyRate, '', $imagePaths);
@@ -389,21 +427,27 @@ class Model
         }
     }
 
-    public function layLuotThue(int $id): ?array
+    public function layLuotThue(int $id, ?int $ownerId = null): ?array
     {
-        $stmt = $this->pdo->prepare(
-            "SELECT b.*, r.room_name
-             FROM bookings b
-             INNER JOIN rooms r ON r.id = b.room_id
-             WHERE b.id = ? AND b.status = 'Active'"
-        );
-        $stmt->execute([$id]);
+        $sql = "SELECT b.*, r.room_name
+                FROM bookings b
+                INNER JOIN rooms r ON r.id = b.room_id
+                WHERE b.id = ? AND b.status = 'Active'";
+        $parameters = [$id];
+        if ($ownerId !== null) {
+            $sql .= ' AND b.user_id = ?';
+            $parameters[] = $ownerId;
+        }
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($parameters);
         $booking = $stmt->fetch();
         return $booking === false ? null : $booking;
     }
 
     public function datphong(
         int $roomId,
+        int $userId,
         string $customerName,
         string $checkIn,
         string $checkOut,
@@ -444,12 +488,13 @@ class Model
                 : 0;
             $insert = $this->pdo->prepare(
                 'INSERT INTO bookings (
-                    room_id, customer_name, check_in, check_out, nightly_rate,
+                    room_id, user_id, customer_name, check_in, check_out, nightly_rate,
                     payment_method, deposit_required, paid_amount
-                 ) VALUES (?, ?, ?, ?, ?, ?, ?, 0)'
+                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)'
             );
             $insert->execute([
                 $roomId,
+                $userId,
                 $customerName,
                 $checkIn,
                 $checkOut,
@@ -592,17 +637,28 @@ class Model
         }
     }
 
-    public function giahan(int $bookingId, string $newCheckout): bool
+    public function giahan(int $bookingId, string $newCheckout, ?int $ownerId = null): bool
     {
         if (!$this->isValidDate($newCheckout)) {
             return false;
         }
 
-        $stmt = $this->pdo->prepare(
-            "UPDATE bookings SET check_out = ?
-             WHERE id = ? AND status = 'Active' AND check_out < ?"
-        );
-        $stmt->execute([$newCheckout, $bookingId, $newCheckout]);
+        $sql = "UPDATE bookings
+                SET check_out = ?,
+                    deposit_required = CASE
+                        WHEN check_in > CURDATE()
+                            THEN CEIL(DATEDIFF(?, check_in) * nightly_rate * 0.20)
+                        ELSE deposit_required
+                    END
+                WHERE id = ? AND status = 'Active' AND check_out < ?";
+        $parameters = [$newCheckout, $newCheckout, $bookingId, $newCheckout];
+        if ($ownerId !== null) {
+            $sql .= ' AND user_id = ?';
+            $parameters[] = $ownerId;
+        }
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($parameters);
         return $stmt->rowCount() === 1;
     }
 

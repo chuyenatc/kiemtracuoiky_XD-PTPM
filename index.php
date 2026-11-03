@@ -28,6 +28,15 @@ $error = $_SESSION['flash_error'] ?? '';
 $success = $_SESSION['flash_success'] ?? '';
 unset($_SESSION['flash_error']);
 $model = new Model();
+if (isset($_SESSION['user']) && is_string($_SESSION['user']) && !isset($_SESSION['user_id'])) {
+    $account = $model->layTaiKhoan($_SESSION['user']);
+    if ($account) {
+        $_SESSION['user_id'] = (int) $account['id'];
+        $_SESSION['role'] = $account['role'];
+    } else {
+        unset($_SESSION['user'], $_SESSION['role']);
+    }
+}
 $controllerArguments = [$model, $csrfToken, $error, $success];
 
 $adminActions = [
@@ -41,9 +50,15 @@ if (in_array($action, $adminActions, true) && ($_SESSION['role'] ?? '') !== 'adm
     exit;
 }
 
-if (in_array($action, ['checkout', 'extend'], true) && ($_SESSION['role'] ?? '') !== 'admin') {
+if ($action === 'checkout' && ($_SESSION['role'] ?? '') !== 'admin') {
     $_SESSION['flash_error'] = 'Bạn không có quyền thực hiện thao tác quản lý này.';
     header('Location: index.php?action=' . (($_SESSION['role'] ?? '') === 'admin' ? 'admin' : 'dashboard'));
+    exit;
+}
+
+if ($action === 'extend' && !isset($_SESSION['user'])) {
+    $_SESSION['flash_error'] = 'Vui lòng đăng nhập để gia hạn lượt thuê.';
+    header('Location: index.php?action=login');
     exit;
 }
 

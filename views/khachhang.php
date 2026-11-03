@@ -1,6 +1,55 @@
 <?php /** @var array $rooms */ ?>
+<?php /** @var array $bookings */ ?>
 <h3>Phòng dành cho khách hàng</h3>
 <p>Xem hình ảnh, trạng thái và giá phòng trước khi gửi yêu cầu đặt phòng.</p>
+<?php if (($_SESSION['role'] ?? '') === 'customer' && isset($_SESSION['user'])): ?>
+    <section class="panel">
+        <h3>Lượt thuê của tôi</h3>
+        <?php if (!$bookings): ?>
+            <p>Bạn hiện không có lượt thuê nào đang hoạt động.</p>
+        <?php else: ?>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Phòng</th>
+                            <th>Thời gian thuê</th>
+                            <th>Tổng dự kiến</th>
+                            <th>Thanh toán</th>
+                            <th>Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($bookings as $booking): ?>
+                            <tr>
+                                <td><?= htmlspecialchars((string) $booking['room_name'], ENT_QUOTES, 'UTF-8') ?></td>
+                                <td>
+                                    <?= htmlspecialchars((string) $booking['check_in'], ENT_QUOTES, 'UTF-8') ?>
+                                    đến <?= htmlspecialchars((string) $booking['check_out'], ENT_QUOTES, 'UTF-8') ?>
+                                </td>
+                                <td><?= number_format((int) $booking['booking_total'], 0, ',', '.') ?> ₫</td>
+                                <td>
+                                    <?= htmlspecialchars((string) $booking['payment_status'], ENT_QUOTES, 'UTF-8') ?><br>
+                                    Đã thu: <?= number_format((int) $booking['paid_amount'], 0, ',', '.') ?> ₫<br>
+                                    Còn lại:
+                                    <?= $booking['balance_due'] === null
+                                        ? 'Chưa đối soát'
+                                        : number_format((int) $booking['balance_due'], 0, ',', '.') . ' ₫' ?>
+                                </td>
+                                <td>
+                                    <a class="btn btn-warning"
+                                       href="index.php?action=extend&amp;booking_id=<?= (int) $booking['id'] ?>">
+                                        Gia hạn
+                                    </a>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+        <?php endif; ?>
+    </section>
+<?php endif; ?>
 <div class="grid">
     <?php foreach ($rooms as $r): ?>
         <article class="card room-card <?= $r['status'] === 'Trống' ? 'empty' : 'rented' ?>">

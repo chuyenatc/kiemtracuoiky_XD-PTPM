@@ -18,6 +18,13 @@ class KhachHangController extends ControllerChung
             return;
         }
 
-        $this->render('khachhang.php', ['rooms' => $this->model->danhSachPhongKhach()]);
+        $userId = filter_var($_SESSION['user_id'] ?? null, FILTER_VALIDATE_INT);
+        $bookings = $userId && ($_SESSION['role'] ?? '') === 'customer'
+            ? $this->model->danhSachLuotThueKhach((int) $userId)
+            : [];
+        $this->render('khachhang.php', [
+            'rooms' => $this->model->danhSachPhongKhach(),
+            'bookings' => $bookings,
+        ]);
     }
 }

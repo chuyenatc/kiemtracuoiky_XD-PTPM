@@ -65,10 +65,15 @@ Views (`views/`): Chứa layout và các mẫu giao diện; không xử lý requ
 dùng plane sinh ra hệ thống
 
 8, Thanh toán và đối soát
- - Khi đặt phòng, khách chọn thanh toán trực tiếp hoặc chuyển khoản/QR. Lựa chọn online hiện chỉ được lưu lại, chưa tích hợp cổng thanh toán; admin cần đối soát giao dịch và ghi nhận số tiền thực nhận trong tab “Thanh toán”.
+ - Khi đặt phòng, khách chọn thanh toán trực tiếp hoặc chuyển khoản/QR. Form hiển thị bảng tổng tiền, tiền cọc, số dư còn lại và số tiền cần thanh toán lần này; khi chọn online sẽ hiện QR giả để minh họa giao diện. QR này không thực hiện giao dịch hay nhận tiền; lựa chọn online chỉ được lưu lại, admin cần đối soát giao dịch thật và ghi nhận số tiền thực nhận trong tab “Thanh toán”.
  - Nếu ngày nhận phòng lớn hơn ngày hiện tại, hệ thống tính cọc bắt buộc bằng 20% tổng tiền dự kiến (làm tròn lên đến đồng); nhận phòng trong ngày không yêu cầu cọc trước. Admin có thể ghi nhận nhiều khoản thu, số tiền vượt quá tổng tiền lượt thuê sẽ bị từ chối.
  - Tab “Thanh toán” hiển thị tiền cọc yêu cầu, tiền đã thu, số dư còn lại và trạng thái thanh toán cho cả lượt đang thuê lẫn đã trả phòng. Các lượt thuê có trước khi cập nhật được đánh dấu “Chưa đối soát”; admin cần nhập phương thức thực tế và số đã thu (nhập 0 nếu chưa xác nhận khoản thu).
  - Với cơ sở dữ liệu cũ, sao lưu trước rồi chạy một lần `migrations/20261103_add_booking_payments.sql` sau khi đã áp dụng các migration cập nhật schema phòng. Migration đánh dấu lượt thuê cũ là chưa đối soát và tính cọc cho các lượt có ngày nhận phòng trong tương lai. Không chạy lại migration này.
+
+9, Khách hàng xem lượt thuê và gia hạn
+ - Booking mới được liên kết với tài khoản khách đã đăng nhập. Khu vực khách hàng hiển thị các lượt thuê đang hoạt động của chính tài khoản đó và cho phép mở form gia hạn.
+ - Admin vẫn có thể gia hạn mọi lượt thuê đang hoạt động. Khách hàng chỉ có thể gia hạn booking thuộc tài khoản của mình; hệ thống kiểm tra chủ booking ở cả lúc hiển thị form và khi lưu ngày mới.
+ - Với CSDL cũ, chạy một lần `migrations/20261103_add_booking_user_id.sql` sau khi bảng `users` và `bookings` đã có đầy đủ schema. Lượt thuê cũ được để `user_id` trống vì không thể liên kết chính xác với tài khoản chỉ dựa vào tên khách; admin vẫn có thể quản lý các lượt này. Người dùng đang đăng nhập trước khi cập nhật không cần đăng xuất, hệ thống sẽ nạp ID tài khoản vào session từ username hiện có.
 
 ## Chạy dự án bằng Docker
 

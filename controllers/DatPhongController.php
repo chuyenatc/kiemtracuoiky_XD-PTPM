@@ -18,19 +18,22 @@ class DatPhongController extends ControllerChung
         }
 
         if ($this->isPost()) {
-            $customerName = $_POST['customer_name'] ?? '';
+            $userId = filter_var($_SESSION['user_id'] ?? null, FILTER_VALIDATE_INT);
+            $customerName = $_SESSION['user'] ?? '';
             $checkIn = $_POST['check_in'] ?? '';
             $checkOut = $_POST['check_out'] ?? '';
             $paymentMethod = $_POST['payment_method'] ?? '';
-            if (!is_string($customerName) || trim($customerName) === ''
+            if (!$userId
+                || !is_string($customerName) || trim($customerName) === ''
                 || !is_string($checkIn) || !$this->validDate($checkIn)
                 || !is_string($checkOut) || !$this->validDate($checkOut)
                 || $checkOut <= $checkIn
                 || !is_string($paymentMethod)
                 || !in_array($paymentMethod, ['direct', 'online'], true)) {
-                $this->error = 'Vui lòng nhập tên khách, ngày trả sau ngày nhận và chọn phương thức thanh toán.';
+                $this->error = 'Thông tin tài khoản, ngày thuê hoặc phương thức thanh toán không hợp lệ.';
             } elseif (!$this->model->datphong(
                 $roomId,
+                (int) $userId,
                 trim($customerName),
                 $checkIn,
                 $checkOut,
@@ -42,6 +45,9 @@ class DatPhongController extends ControllerChung
             }
         }
 
-        $this->render('datphongadmin.php', ['room' => $room]);
+        $this->render('datphongadmin.php', [
+            'room' => $room,
+            'customerName' => (string) ($_SESSION['user'] ?? ''),
+        ]);
     }
 }

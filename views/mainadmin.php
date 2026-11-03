@@ -52,10 +52,29 @@
         .qr-preview { max-width: 360px; margin: 14px 0; padding: 18px; border: 1px solid var(--line); border-radius: 14px; background: #fff; text-align: center; }
         .qr-preview[hidden] { display: none; }
         .qr-preview h4 { margin: 0 0 8px; }
+        .booking-payment-panel { margin: 16px 0; padding: 18px; border: 1px solid var(--line); border-radius: 14px; background: #f8fbfa; }
+        .booking-payment-panel h4 { margin: 0 0 12px; }
+        .booking-payment-panel table { background: #fff; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+        .booking-payment-panel .table-wrap table { min-width: 0; }
+        .booking-payment-panel th { width: 58%; }
+        .booking-payment-panel td { text-align: right; font-weight: 700; }
+        .booking-payment-panel tr:last-child th, .booking-payment-panel tr:last-child td { color: var(--brand-dark); font-size: 1.05rem; }
         .qr-mock { display: grid; grid-template-columns: repeat(21, 1fr); gap: 1px; width: min(100%, 220px); aspect-ratio: 1; margin: 14px auto; padding: 8px; border: 1px solid #e2e8f0; background: #fff; }
         .qr-mock span { background: #fff; }
         .qr-mock span.is-dark { background: #172b4d; }
         .qr-preview-warning { color: #a63e20; font-size: .88rem; font-weight: 700; line-height: 1.5; }
+        .booking-layout { display: block; }
+        .booking-details, .booking-sidebar, .booking-fields { min-width: 0; }
+        .booking-details .room-gallery { width: min(100%, 760px); max-width: 760px; }
+        .booking-details .room-gallery .room-photo-item.active { width: 100%; }
+        .booking-details .room-gallery .room-image { width: 100%; height: auto; max-height: 430px; aspect-ratio: 16 / 9; object-fit: cover; }
+        .booking-details .room-gallery .gallery-controls { width: max-content; margin: 8px auto 0; }
+        .booking-form-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(340px, .9fr); align-items: start; gap: clamp(20px, 3vw, 40px); margin-top: 20px; }
+        .booking-fields .form-group { max-width: 620px; }
+        .booking-sidebar { position: static; }
+        .booking-sidebar .booking-payment-panel { margin-top: 0; }
+        .booking-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+        .booking-actions .btn { flex: 1 1 150px; margin-top: 0; }
         input:focus { outline: 3px solid rgba(23, 107, 99, .15); border-color: var(--brand); }
         textarea:focus { outline: 3px solid rgba(23, 107, 99, .15); border-color: var(--brand); }
         table { width: 100%; border-collapse: collapse; }
@@ -122,6 +141,7 @@
         @media (min-width: 1600px) { .grid { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); } }
         @media (hover: none) { .room-gallery[data-room-gallery] .gallery-controls { opacity: 1; pointer-events: auto; } }
         @media (max-width: 760px) { .room-gallery-mosaic { height: 310px; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 5px; } .room-gallery-mosaic .room-mosaic-image:first-child { grid-column: span 1; grid-row: span 2; } .room-gallery-mosaic .room-mosaic-image:nth-child(n+5) { display: none; } .room-detail > .room-image-placeholder { height: 280px; } .room-summary { align-items: flex-start; flex-direction: column; } .room-summary-booking { width: 100%; justify-content: space-between; } }
+        @media (max-width: 900px) { .booking-form-row { grid-template-columns: minmax(0, 1fr); } }
         @media (max-width: 640px) { .container { padding: 16px; } .header { align-items: flex-start; flex-direction: column; } .room-image, .room-image-placeholder { height: 190px; } .room-detail > .room-image-placeholder { height: 240px; } .room-detail-content { padding: 14px; } .room-summary-booking { align-items: flex-start; flex-direction: column; } .room-summary-price { text-align: left; } th, td { padding: 9px 8px; } }
     </style>
 </head>
@@ -151,7 +171,6 @@
                 <a href="index.php?action=admin_accounts" class="btn <?= in_array($action, ['admin_accounts', 'admin_add'], true) ? 'active' : '' ?>">Tài khoản admin</a>
                 <a href="index.php?action=customer" class="btn btn-warning">Khu vực khách hàng</a>
             <?php else: ?>
-                <a href="index.php?action=dashboard" class="btn btn-warning">Khu vực khách hàng</a>
                 <?php if (!isset($_SESSION['user'])): ?>
                     <a href="index.php?action=register" class="btn">Đăng ký</a>
                 <?php endif; ?>

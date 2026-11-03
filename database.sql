@@ -42,6 +42,7 @@ INSERT INTO rooms (room_name, nightly_rate) VALUES
 CREATE TABLE bookings (
     id INT AUTO_INCREMENT KEY,
     room_id INT,
+    user_id INT NULL,
     customer_name VARCHAR(100),
     check_in DATE,
     check_out DATE,
@@ -49,5 +50,8 @@ CREATE TABLE bookings (
     payment_method ENUM('direct', 'online', 'unknown') NOT NULL DEFAULT 'unknown',
     deposit_required BIGINT UNSIGNED NOT NULL DEFAULT 0,
     paid_amount BIGINT UNSIGNED NOT NULL DEFAULT 0,
-    status ENUM('Active', 'Completed') DEFAULT 'Active'
+    status ENUM('Active', 'Completed') DEFAULT 'Active',
+    KEY idx_bookings_user_status (user_id, status),
+    CONSTRAINT fk_bookings_user
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
 );

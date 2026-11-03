@@ -21,6 +21,7 @@ class DangNhapController extends ControllerChung
                 if ($user) {
                     session_regenerate_id(true);
                     $_SESSION['user'] = $user['username'];
+                    $_SESSION['user_id'] = (int) $user['id'];
                     $_SESSION['role'] = $user['role'];
                     header('Location: ' . ($returnTo ?? 'index.php?action=dashboard'));
                     exit;
